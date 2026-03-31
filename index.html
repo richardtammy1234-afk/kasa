@@ -499,7 +499,7 @@ onAuthStateChanged(auth,user=>{
   if(user){
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('app').style.display='flex';
-    const name=user.displayName?.split(' ')[0]||'Cemal';
+    const name='Cemal';
     document.getElementById('greeting').textContent=`Merhaba, ${name}`;
     const av=document.getElementById('user-avatar');
     const sav=document.getElementById('settings-avatar');
