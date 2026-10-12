@@ -183,6 +183,25 @@ button{cursor:pointer;border:none;background:none;}
 .srch input{flex:1;font-size:13px;}
 .emp{padding:2.5rem 1rem;text-align:center;color:var(--txt3);font-size:13px;}
 .loading{padding:3rem;text-align:center;color:var(--txt3);font-size:13px;}
+
+/* QUICK ADD */
+.qk{margin-bottom:14px;}
+.qk input{font-size:17px;padding:12px 13px;border-radius:12px;}
+.qk-hint{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px;min-height:20px;}
+.qk-tag{font-size:11px;padding:3px 8px;border-radius:12px;background:var(--bg3);color:var(--txt2);}
+.qk-tag.ok{background:#5b50e81f;color:var(--acc);font-weight:600;}
+.qk-tag.wr{background:#f59e0b26;color:#b45309;}
+@media(prefers-color-scheme:dark){.qk-tag.wr{color:#fcd34d;}}
+.qk .chips{padding:6px 0 0;}
+.qk-sep{height:0.5px;background:var(--bdr);margin:2px 0 14px;}
+.cfm{background:var(--bg2);border:0.5px solid var(--bdr2);border-radius:var(--r);padding:12px;margin-top:10px;}
+.cfm-t{font-size:11px;color:var(--txt2);font-weight:500;margin-bottom:6px;}
+.cfm-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;}
+.cfm-d{font-size:15px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cfm-a{font-size:17px;font-weight:700;color:var(--red);font-variant-numeric:tabular-nums;flex-shrink:0;}
+.cfm-m{font-size:12px;color:var(--txt2);margin-top:3px;}
+.btn2{flex:1;background:transparent;border:0.5px solid var(--bdr2);color:var(--txt);padding:11px;border-radius:var(--r2);cursor:pointer;font-size:13px;font-weight:500;}
+.btn1:disabled,.btns:disabled{opacity:.6;}
 </style>
 </head>
 <body>
@@ -245,7 +264,7 @@ button{cursor:pointer;border:none;background:none;}
     <div class="pg">
       <div style="padding-top:.25rem">
         <div class="srch">
-          <input type="text" id="s-q" placeholder="İşlem ara..." oninput="renderTxs()">
+          <input type="text" id="s-q" placeholder="İşlem ara..." oninput="renderTxs()" style="font-size:16px;">
           <input type="month" id="s-mo" style="max-width:135px;font-size:12px;" onchange="renderTxs()">
         </div>
         <div class="chips" id="s-crd-chips"></div>
@@ -367,16 +386,35 @@ button{cursor:pointer;border:none;background:none;}
   <div class="sht">
     <div class="shdl"></div>
     <div class="shtt">İşlem Ekle</div>
+    <div class="qk">
+      <div class="fg" style="margin-bottom:0"><label for="q-in">Hızlı giriş</label>
+        <input type="text" id="q-in" placeholder="örn. Migros 450 İş Bankası" autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="false" enterkeyhint="done" oninput="window.onQuick()" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();window.reviewTx();}">
+      </div>
+      <div class="qk-hint" id="q-hint"></div>
+      <div class="chips" id="q-sugs"></div>
+    </div>
+    <div class="qk-sep"></div>
+    <div id="addtx-form" oninput="window.onFormEdit(event)" onchange="window.onFormEdit(event)">
     <div class="fr2">
       <div class="fg"><label>Tarih</label><input type="date" id="f-date"></div>
-      <div class="fg"><label>Tutar (₺)</label><input type="number" id="f-amt" placeholder="0.00" step="0.01" min="0"></div>
+      <div class="fg"><label>Tutar (₺)</label><input type="number" id="f-amt" placeholder="0.00" step="0.01" min="0" inputmode="decimal"></div>
     </div>
     <div class="fg"><label>Açıklama</label><input type="text" id="f-desc" placeholder="Migros, Trendyol..."></div>
     <div class="fr2">
       <div class="fg"><label>Kategori</label><select id="f-cat"></select></div>
       <div class="fg"><label>Kart</label><select id="f-crd"></select></div>
     </div>
-    <button class="btn1" onclick="addTx()">Kaydet</button>
+    </div>
+    <button class="btn1" id="addtx-next" onclick="reviewTx()">Devam</button>
+    <div class="cfm" id="addtx-cfm" style="display:none">
+      <div class="cfm-t">Bu işlem kaydedilsin mi?</div>
+      <div class="cfm-row"><div class="cfm-d" id="cfm-desc"></div><div class="cfm-a" id="cfm-amt"></div></div>
+      <div class="cfm-m" id="cfm-meta"></div>
+      <div class="sbt">
+        <button class="btn2" onclick="window.cancelReview()">Düzelt</button>
+        <button class="btns" id="addtx-save" onclick="addTx()">Onayla ve Kaydet</button>
+      </div>
+    </div>
     <span class="fbk" id="addtx-fb" style="display:block;margin-top:8px;text-align:center;"></span>
   </div>
 </div>
@@ -385,6 +423,7 @@ button{cursor:pointer;border:none;background:none;}
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut as fbSignOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
 import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, writeBatch } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
+import { parseQuick, localDate, frequentDescriptions } from './quick-parse.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyB0CHxGzazi7pJVOqkaQ5lfCHizPJh7DHE",
@@ -426,6 +465,7 @@ const curKey=()=>`${curMonth.getFullYear()}-${String(curMonth.getMonth()+1).padS
 const mTxs=k=>txs.filter(t=>mKey(t.date)===k);
 const getCat=n=>CATS.find(c=>c.n===n)||{n:'Diğer',c:'#6b7280'};
 const getCard=id=>cards.find(c=>c.id===id)||{name:'?',color:'#888',type:'?'};
+const esc=s=>String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 
 const setSyncStatus=(msg,color='rgba(255,255,255,.6)')=>{const el=document.getElementById('sync-status');if(el){el.textContent=msg;el.style.color=color;}};
 
@@ -560,8 +600,8 @@ const txItemHTML=(t,del=false)=>{
   return`<div class="txi">
     <div class="tx-ic" style="background:${cat.c}1a;color:${cat.c}">${cat.n.charAt(0)}</div>
     <div class="txd">
-      <div class="txn">${t.description}</div>
-      <div class="txm">${dt} · ${cat.n} · <span style="color:${card.color};font-weight:600">${card.name}</span></div>
+      <div class="txn">${esc(t.description)}</div>
+      <div class="txm">${dt} · ${cat.n} · <span style="color:${card.color};font-weight:600">${esc(card.name)}</span></div>
     </div>
     <div class="txa">${fmt(t.amount)}</div>
     ${del?`<button class="txdl" onclick="window.delTx('${t.id}')">×</button>`:''}
@@ -668,34 +708,123 @@ window.openCardEdit=id=>{
 window.saveCard=saveCard;
 window.deleteCard=deleteCard;
 
-window.openAddTx=()=>{
-  document.getElementById('f-date').value=new Date().toISOString().split('T')[0];
-  document.getElementById('f-amt').value='';document.getElementById('f-desc').value='';
-  document.getElementById('addtx-fb').textContent='';
-  document.getElementById('addtx-ovl').classList.add('on');
+// Son seçilen kart cihazda, kullanıcı bazında hatırlanır (sadece kart kimliği; finansal veri değil)
+const lastCardKey=()=>`kasa:lastCard:${currentUser?.uid||''}`;
+const getLastCard=()=>{try{const id=localStorage.getItem(lastCardKey());return cards.some(c=>c.id===id)?id:null;}catch(e){return null;}};
+const setLastCard=id=>{try{localStorage.setItem(lastCardKey(),id);}catch(e){}};
+const defaultCardId=()=>getLastCard()||cards[0]?.id||'';
+
+// Kullanıcının elle değiştirdiği alanlar hızlı giriş tarafından ezilmez
+let touched=new Set(),saving=false;
+const $=id=>document.getElementById(id);
+const setField=(id,val)=>{if(!touched.has(id))$(id).value=val;};
+
+window.onFormEdit=e=>{
+  if(e.target?.id)touched.add(e.target.id);
+  hideReview();
 };
+
+const renderQuickSugs=()=>{
+  const since=localDate(new Date(),-120);
+  const sugs=frequentDescriptions(txs.filter(t=>String(t.date)>=since),6);
+  $('q-sugs').innerHTML=sugs.map((d,i)=>`<div class="ch" data-i="${i}">${esc(d)}</div>`).join('');
+  $('q-sugs').querySelectorAll('.ch').forEach((el,i)=>el.onclick=()=>{const q=$('q-in');q.value=sugs[i]+' ';q.focus();window.onQuick();});
+};
+
+window.onQuick=()=>{
+  hideReview();
+  const text=$('q-in').value;
+  const hint=$('q-hint');
+  if(!text.trim()){hint.innerHTML='';return;}
+  const r=parseQuick(text,{cards,categories:CATS,history:txs});
+  setField('f-desc',r.description);
+  setField('f-amt',r.amount??'');
+  setField('f-date',localDate(new Date(),r.dayOffset));
+  setField('f-cat',r.category||'Diğer');
+  setField('f-crd',r.cardId||defaultCardId());
+  const tags=[];
+  tags.push(r.amount!=null?`<span class="qk-tag ok">${fmt(r.amount)}</span>`:`<span class="qk-tag wr">Tutar yaz</span>`);
+  if(r.category)tags.push(`<span class="qk-tag ok">${esc(r.category)}</span>`);
+  if(r.cardId)tags.push(`<span class="qk-tag ok">${esc(r.cardMatched)}</span>`);
+  else if(r.unknownBank)tags.push(`<span class="qk-tag wr">"${esc(r.unknownBank)}" kartı kayıtlı değil — Kart alanından seç</span>`);
+  else if(cards.length)tags.push(`<span class="qk-tag">${esc(getCard($('f-crd').value).name)}${getLastCard()?' (son kullanılan)':''}</span>`);
+  if(r.dayOffset)tags.push(`<span class="qk-tag ok">${r.dayOffset===-1?'Dün':'Önceki gün'}</span>`);
+  hint.innerHTML=tags.join('');
+};
+
+const readForm=()=>({
+  date:$('f-date').value,
+  amount:parseFloat($('f-amt').value),
+  description:$('f-desc').value.trim(),
+  category:$('f-cat').value,
+  cardId:$('f-crd').value,
+});
+const validTx=t=>t.date&&t.amount>0&&t.description&&t.category&&t.cardId;
+
+const hideReview=()=>{$('addtx-cfm').style.display='none';$('addtx-next').style.display='';};
+window.cancelReview=()=>{hideReview();$('q-in').focus();};
+
+window.openAddTx=()=>{
+  touched=new Set();
+  const q=$('q-in');q.value='';
+  $('q-hint').innerHTML='';
+  $('f-date').value=localDate();
+  $('f-amt').value='';$('f-desc').value='';
+  $('f-cat').value=CATS[0].n;
+  const dc=defaultCardId();if(dc)$('f-crd').value=dc;
+  $('addtx-fb').textContent='';
+  hideReview();
+  renderQuickSugs();
+  $('addtx-ovl').classList.add('on');
+  // iPhone klavyeyi yalnızca dokunma olayı içinde odaklanınca açar
+  q.focus();
+};
+
+// 1. adım: özet göster, kaydetmeden önce onay iste
+window.reviewTx=()=>{
+  const t=readForm();
+  const fb=$('addtx-fb');
+  if(!validTx(t)){fb.className='fbk er';fb.textContent=!(t.amount>0)?'Tutar gir.':!t.description?'Açıklama gir.':'Tüm alanları doldur.';return;}
+  fb.textContent='';
+  const card=getCard(t.cardId);
+  $('cfm-desc').textContent=t.description;
+  $('cfm-amt').textContent=fmt(t.amount);
+  $('cfm-meta').textContent=`${t.category} · ${card.name} · ${new Date(t.date+'T00:00').toLocaleDateString('tr-TR')}`;
+  $('addtx-next').style.display='none';
+  $('addtx-cfm').style.display='';
+  $('addtx-save').focus();
+};
+
+// 2. adım: onaylanınca kaydet
 window.addTx=async()=>{
-  const date=document.getElementById('f-date').value;
-  const amount=parseFloat(document.getElementById('f-amt').value);
-  const description=document.getElementById('f-desc').value.trim();
-  const category=document.getElementById('f-cat').value;
-  const cardId=document.getElementById('f-crd').value;
-  const fb=document.getElementById('addtx-fb');
-  if(!date||!amount||!description||!category||!cardId){fb.className='fbk er';fb.textContent='Tüm alanları doldur.';return;}
-  const tx={id:uid(),date,amount,description,category,cardId};
-  await saveTx(tx);
-  fb.className='fbk ok';fb.textContent='Eklendi!';
-  document.getElementById('f-amt').value='';document.getElementById('f-desc').value='';
-  setTimeout(()=>{document.getElementById('addtx-ovl').classList.remove('on');},600);
+  if(saving)return;
+  const t=readForm();
+  const fb=$('addtx-fb');
+  if(!validTx(t)){fb.className='fbk er';fb.textContent='Tüm alanları doldur.';hideReview();return;}
+  const tx={id:uid(),...t};
+  saving=true;$('addtx-save').disabled=true;
+  try{
+    await saveTx(tx);
+    setLastCard(tx.cardId);
+    fb.className='fbk ok';fb.textContent='Eklendi!';
+    $('f-amt').value='';$('f-desc').value='';$('q-in').value='';$('q-hint').innerHTML='';
+    hideReview();
+    setTimeout(()=>{$('addtx-ovl').classList.remove('on');},600);
+  }catch(e){
+    fb.className='fbk er';fb.textContent='Kaydedilemedi: '+(e?.message||e);
+  }finally{
+    saving=false;$('addtx-save').disabled=false;
+  }
 };
 
 window.closeOvl=(id,e)=>{if(e.target===document.getElementById(id))document.getElementById(id).classList.remove('on');};
 
 const rebuildSelects=()=>{
-  const cOpts=cards.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
-  ['f-crd','i-crd'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=cOpts;});
+  const cOpts=cards.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
+  // Senkronizasyon sırasında açık formdaki seçimi kaybetme
+  ['f-crd','i-crd'].forEach(id=>{const el=document.getElementById(id);if(el){const v=el.value;el.innerHTML=cOpts;if(v&&cards.some(c=>c.id===v))el.value=v;else if(id==='f-crd'){const lc=getLastCard();if(lc)el.value=lc;}}});
   const catOpts=CATS.map(c=>`<option value="${c.n}">${c.n}</option>`).join('');
-  const fc=document.getElementById('f-cat');if(fc)fc.innerHTML=catOpts;
+  const fc=document.getElementById('f-cat');if(fc){const v=fc.value;fc.innerHTML=catOpts;if(v)fc.value=v;}
   const cc=document.getElementById('s-crd-chips');if(cc){cc.dataset.b='';cc.innerHTML='';}
 };
 
@@ -753,7 +882,7 @@ window.clearTxs=async()=>{
   await batch.commit();
 };
 
-document.getElementById('s-mo').value=new Date().toISOString().slice(0,7);
+document.getElementById('s-mo').value=localDate().slice(0,7);
 updateMLabels();
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
