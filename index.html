@@ -326,6 +326,12 @@ button{cursor:pointer;border:none;background:none;}
       </div>
       <div class="icard">
         <div class="it">Veri Yönetimi</div>
+        <p style="font-size:12px;color:var(--txt2);margin-bottom:10px;">Yedek; tüm kart ve işlemlerini bir dosyaya kaydeder. Geri yükleme yalnızca eksik kayıtları ekler, mevcut kayıtları değiştirmez veya silmez.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+          <button onclick="exportBackup()" style="background:var(--acc);color:#fff;padding:9px 14px;border-radius:var(--r2);font-size:13px;font-weight:500;">Yedek indir</button>
+          <label style="background:var(--bg2);border:0.5px solid var(--bdr2);padding:9px 14px;border-radius:var(--r2);font-size:13px;font-weight:500;cursor:pointer;">Yedekten geri yükle<input type="file" id="bk-file" accept="application/json,.json" style="display:none" onchange="restoreBackup(this)"></label>
+        </div>
+        <span class="fbk" id="bk-fb" style="display:block;margin:0 0 12px;"></span>
         <p style="font-size:12px;color:var(--txt2);margin-bottom:12px;">Sadece işlemler silinir. Kartlar korunur.</p>
         <button class="dbtn" onclick="clearTxs()">Tüm işlemleri sil</button>
       </div>
@@ -423,7 +429,12 @@ button{cursor:pointer;border:none;background:none;}
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut as fbSignOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
 import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, writeBatch } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
-import { parseQuick, localDate, frequentDescriptions } from './quick-parse.js';
+
+// Hızlı giriş modülü ayrı yüklenir: dosya alınamazsa (ağ/önbellek) giriş, liste ve normal işlem ekleme yine çalışır.
+let QP=null;
+import('./quick-parse.js?v=2').then(m=>{QP=m;}).catch(e=>{console.warn('Hızlı giriş yüklenemedi',e);});
+// Yerel saatle YYYY-MM-DD (toISOString UTC'dir; Türkiye'de 00:00-03:00 arası önceki günü verir)
+const localDate=(d=new Date(),offsetDays=0)=>{const x=new Date(d.getFullYear(),d.getMonth(),d.getDate()+offsetDays);return`${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`;};
 
 const firebaseConfig = {
   apiKey: "AIzaSyB0CHxGzazi7pJVOqkaQ5lfCHizPJh7DHE",
@@ -456,7 +467,7 @@ const DEFAULT_CARDS=[
 ];
 
 let txs=[],cards=[],curMonth=new Date(),editCardId=null,chts={},sCrd=null,sCat=null;
-let currentUser=null,unsubTxs=null,unsubCards=null;
+let currentUser=null,unsubTxs=null,unsubCards=null,txsLoaded=false,cardsLoaded=false;
 
 const fmt=n=>'₺'+parseFloat(n).toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2});
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,5);
@@ -499,15 +510,18 @@ const deleteCard=async()=>{
 const subscribeData=()=>{
   if(unsubTxs)unsubTxs();
   if(unsubCards)unsubCards();
+  txsLoaded=cardsLoaded=false;
   setSyncStatus('Senkronize ediliyor...');
   unsubCards=onSnapshot(userRef('cards'),snap=>{
     cards=snap.docs.map(d=>d.data());
     if(!cards.length){
+      if(snap.metadata?.fromCache)return;
       const batch=writeBatch(db);
       DEFAULT_CARDS.forEach(c=>batch.set(doc(userRef('cards'),c.id),c));
       batch.commit();
       return;
     }
+    cardsLoaded=true;
     rebuildSelects();
     const av=document.querySelector('.v.on')?.id;
     if(av==='v-home')renderHome();
@@ -515,7 +529,8 @@ const subscribeData=()=>{
   });
   unsubTxs=onSnapshot(userRef('txs'),snap=>{
     txs=snap.docs.map(d=>d.data());
-    setSyncStatus('Senkronize ✓');
+    if(!snap.metadata?.fromCache)txsLoaded=true;
+    if(!snap.metadata?.hasPendingWrites)setSyncStatus('Senkronize ✓');
     const av=document.querySelector('.v.on')?.id;
     if(av==='v-home')renderHome();
     if(av==='v-txs')renderTxs();
@@ -563,7 +578,7 @@ const renderAlerts=id=>{
   const a=getDueAlerts();const el=document.getElementById(id);if(!el)return;
   el.innerHTML=a.map(({card,d,dy})=>{
     const cls=dy<=1?'d':'w';
-    const msg=dy===0?`<b>${card.name}</b> son ödeme <b>BUGÜN!</b>`:dy<0?`<b>${card.name}</b> ödemesi gecikmiş!`:`<b>${card.name}</b> son ödeme: ${dy} gün sonra (${d.toLocaleDateString('tr-TR')})`;
+    const msg=dy===0?`<b>${esc(card.name)}</b> son ödeme <b>BUGÜN!</b>`:dy<0?`<b>${esc(card.name)}</b> ödemesi gecikmiş!`:`<b>${esc(card.name)}</b> son ödeme: ${dy} gün sonra (${d.toLocaleDateString('tr-TR')})`;
     return`<div class="alrt ${cls}"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span>${msg}</span></div>`;
   }).join('');
   document.getElementById('ndot')?.classList.toggle('on',a.length>0);
@@ -627,7 +642,7 @@ const renderHome=()=>{
   document.getElementById('home-ccar').innerHTML=cards.map(c=>`
     <div class="ccard" style="border-top-color:${c.color}" onclick="goTab('cards')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-        <div><div class="ccard-nm" style="color:${c.color}">${c.name}</div><div class="ccard-tp">${c.type}${c.dueDay?` · Ödeme: ${c.dueDay}.`:''}</div></div>
+        <div><div class="ccard-nm" style="color:${c.color}">${esc(c.name)}</div><div class="ccard-tp">${esc(c.type)}${c.dueDay?` · Ödeme: ${c.dueDay}.`:''}</div></div>
         <div style="width:18px;height:13px;border-radius:2px;background:var(--bdr2);"></div>
       </div>
       <div><div class="ccard-amt">${fmt(ct[c.id]||0)}</div><div class="ccard-sub">bu ay harcama</div></div>
@@ -638,7 +653,7 @@ const renderHome=()=>{
 
 const renderTxs=()=>{
   const cc=document.getElementById('s-crd-chips');
-  if(!cc.dataset.b){cc.innerHTML='<div class="ch on" data-cid="" onclick="window.setCrdF(this,\'\')">Tümü</div>'+cards.map(c=>`<div class="ch" data-cid="${c.id}" onclick="window.setCrdF(this,'${c.id}')">${c.name}</div>`).join('');cc.dataset.b='1';}
+  if(!cc.dataset.b){cc.innerHTML='<div class="ch on" data-cid="" onclick="window.setCrdF(this,\'\')">Tümü</div>'+cards.map(c=>`<div class="ch" data-cid="${c.id}" onclick="window.setCrdF(this,'${c.id}')">${esc(c.name)}</div>`).join('');cc.dataset.b='1';}
   const catc=document.getElementById('s-cat-chips');
   if(!catc.dataset.b){catc.innerHTML='<div class="ch on" data-cat="" onclick="window.setCatF(this,\'\')">Tümü</div>'+CATS.map(c=>`<div class="ch" data-cat="${c.n}" onclick="window.setCatF(this,'${c.n}')">${c.n}</div>`).join('');catc.dataset.b='1';}
   const q=document.getElementById('s-q').value.toLowerCase();
@@ -652,6 +667,8 @@ const renderTxs=()=>{
   document.getElementById('txs-wrap').innerHTML=f.length?`<div class="txw">${f.map(t=>txItemHTML(t,true)).join('')}</div>`:`<div class="emp">İşlem bulunamadı</div>`;
 };
 
+// HTML'deki oninput/onchange çağrıları için (modül içindeki fonksiyonlar global değildir)
+window.renderTxs=renderTxs;
 window.setCrdF=(el,id)=>{sCrd=id||null;document.querySelectorAll('#s-crd-chips .ch').forEach(c=>c.classList.toggle('on',c.dataset.cid===id));renderTxs();};
 window.setCatF=(el,n)=>{sCat=n||null;document.querySelectorAll('#s-cat-chips .ch').forEach(c=>c.classList.toggle('on',c.dataset.cat===n));renderTxs();};
 window.delTx=async id=>{if(!confirm('Bu işlemi silmek istiyor musun?'))return;await deleteTxRemote(id);};
@@ -669,8 +686,8 @@ const renderCards=()=>{
       dtHtml=`<div class="cgi-dr">${s}${d}</div>`;
     }
     return`<div class="cgi" style="border-top-color:${c.color}" onclick="window.openCardEdit('${c.id}')">
-      <div class="cgi-nm" style="color:${c.color}">${c.name}</div>
-      <div class="cgi-tp">${c.type}${c.limit?` · ₺${c.limit.toLocaleString('tr-TR')}`:''}</div>
+      <div class="cgi-nm" style="color:${c.color}">${esc(c.name)}</div>
+      <div class="cgi-tp">${esc(c.type)}${c.limit?` · ₺${c.limit.toLocaleString('tr-TR')}`:''}</div>
       <div class="cgi-sp">${fmt(spend)}</div><div class="cgi-sl">bu ay</div>${dtHtml}
     </div>`;
   }).join('');
@@ -726,7 +743,7 @@ window.onFormEdit=e=>{
 
 const renderQuickSugs=()=>{
   const since=localDate(new Date(),-120);
-  const sugs=frequentDescriptions(txs.filter(t=>String(t.date)>=since),6);
+  const sugs=QP?QP.frequentDescriptions(txs.filter(t=>String(t.date)>=since),6):[];
   $('q-sugs').innerHTML=sugs.map((d,i)=>`<div class="ch" data-i="${i}">${esc(d)}</div>`).join('');
   $('q-sugs').querySelectorAll('.ch').forEach((el,i)=>el.onclick=()=>{const q=$('q-in');q.value=sugs[i]+' ';q.focus();window.onQuick();});
 };
@@ -736,7 +753,8 @@ window.onQuick=()=>{
   const text=$('q-in').value;
   const hint=$('q-hint');
   if(!text.trim()){hint.innerHTML='';return;}
-  const r=parseQuick(text,{cards,categories:CATS,history:txs});
+  if(!QP){hint.innerHTML='<span class="qk-tag wr">Hızlı giriş yüklenemedi — alanları aşağıdan doldur</span>';return;}
+  const r=QP.parseQuick(text,{cards,categories:CATS,history:txs});
   setField('f-desc',r.description);
   setField('f-amt',r.amount??'');
   setField('f-date',localDate(new Date(),r.dayOffset));
@@ -765,7 +783,7 @@ const hideReview=()=>{$('addtx-cfm').style.display='none';$('addtx-next').style.
 window.cancelReview=()=>{hideReview();$('q-in').focus();};
 
 window.openAddTx=()=>{
-  touched=new Set();
+  touched=new Set();saving=false;$('addtx-save').disabled=false;
   const q=$('q-in');q.value='';
   $('q-hint').innerHTML='';
   $('f-date').value=localDate();
@@ -795,26 +813,27 @@ window.reviewTx=()=>{
   $('addtx-save').focus();
 };
 
-// 2. adım: onaylanınca kaydet
-window.addTx=async()=>{
+// 2. adım: onaylanınca kaydet.
+// Firestore yazıyı hemen yerelde uygular ve listeye yansıtır; sunucu onayı internet yokken gelmez.
+// Bu yüzden arayüz onayı beklemez, hata olursa ayrıca bildirilir.
+window.addTx=()=>{
   if(saving)return;
   const t=readForm();
   const fb=$('addtx-fb');
   if(!validTx(t)){fb.className='fbk er';fb.textContent='Tüm alanları doldur.';hideReview();return;}
-  const tx={id:uid(),...t};
+  const tx={id:uid(),date:t.date,amount:t.amount,description:t.description,category:t.category,cardId:t.cardId};
   saving=true;$('addtx-save').disabled=true;
-  try{
-    await saveTx(tx);
-    setLastCard(tx.cardId);
-    fb.className='fbk ok';fb.textContent='Eklendi!';
-    $('f-amt').value='';$('f-desc').value='';$('q-in').value='';$('q-hint').innerHTML='';
-    hideReview();
-    setTimeout(()=>{$('addtx-ovl').classList.remove('on');},600);
-  }catch(e){
-    fb.className='fbk er';fb.textContent='Kaydedilemedi: '+(e?.message||e);
-  }finally{
-    saving=false;$('addtx-save').disabled=false;
-  }
+  setSyncStatus('Kaydediliyor...');
+  let p;
+  try{p=saveTx(tx);}catch(e){p=Promise.reject(e);}
+  p.then(()=>setSyncStatus('Senkronize ✓'))
+   .catch(e=>{setSyncStatus('Kaydedilemedi!','#fecaca');alert(`"${tx.description}" (${fmt(tx.amount)}) kaydedilemedi: ${e?.message||e}`);});
+  setLastCard(tx.cardId);
+  fb.className='fbk ok';
+  fb.textContent=navigator.onLine===false?'Eklendi — internet gelince senkronize edilecek':'Eklendi!';
+  $('f-amt').value='';$('f-desc').value='';$('q-in').value='';$('q-hint').innerHTML='';
+  hideReview();
+  setTimeout(()=>{$('addtx-ovl').classList.remove('on');saving=false;$('addtx-save').disabled=false;},600);
 };
 
 window.closeOvl=(id,e)=>{if(e.target===document.getElementById(id))document.getElementById(id).classList.remove('on');};
@@ -876,10 +895,60 @@ window.doImport=async()=>{
 };
 
 window.clearTxs=async()=>{
-  if(!confirm('Tüm işlemler silinecek. Emin misin?'))return;
+  const ans=prompt(`${txs.length} işlemin TAMAMI kalıcı olarak silinecek. Önce "Yedek indir" ile yedek alman önerilir.\n\nOnaylamak için SİL yaz:`);
+  if(ans===null||ans.trim().toLocaleUpperCase('tr-TR').replace('I','İ')!=='SİL')return;
   const batch=writeBatch(db);
   txs.forEach(t=>batch.delete(doc(userRef('txs'),t.id)));
   await batch.commit();
+};
+
+const TX_FIELDS=['id','date','amount','description','category','cardId'];
+const CARD_FIELDS=['id','name','type','color','limit','statementDay','dueDay'];
+const pick=(o,f)=>Object.fromEntries(f.filter(k=>o[k]!==undefined).map(k=>[k,o[k]]));
+const okId=id=>typeof id==='string'&&id.length>0&&id.length<200&&!id.includes('/')&&id!=='.'&&id!=='..';
+const okTx=t=>t&&okId(t.id)&&/^\d{4}-\d{2}-\d{2}$/.test(t.date)&&typeof t.amount==='number'&&t.amount>0&&typeof t.description==='string'&&typeof t.category==='string'&&typeof t.cardId==='string';
+const okDay=v=>v==null||(Number.isInteger(v)&&v>=1&&v<=31);
+const okCard=c=>c&&okId(c.id)&&typeof c.name==='string'&&c.name.length>0&&(c.color==null||/^#[0-9a-f]{3,8}$/i.test(c.color))&&(c.type==null||typeof c.type==='string')&&(c.limit==null||typeof c.limit==='number')&&okDay(c.statementDay)&&okDay(c.dueDay);
+
+window.exportBackup=async()=>{
+  const fb=$('bk-fb');
+  if(!txsLoaded||!cardsLoaded){fb.className='fbk er';fb.textContent='Veriler henüz yüklenmedi, birkaç saniye sonra tekrar dene.';return;}
+  const name=`kasa-yedek-${localDate()}.json`;
+  const json=JSON.stringify({app:'kasa',version:1,exportedAt:new Date().toISOString(),cards:cards.map(c=>pick(c,CARD_FIELDS)),txs:txs.map(t=>pick(t,TX_FIELDS))},null,1);
+  const blob=new Blob([json],{type:'application/json'});
+  fb.className='fbk ok';fb.textContent=`${txs.length} işlem, ${cards.length} kart yedeklendi.`;
+  try{
+    const file=new File([blob],name,{type:'application/json'});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:name});return;}
+  }catch(e){if(e?.name==='AbortError'){fb.textContent='';return;}}
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000);
+};
+
+// Yalnızca eksik kayıtları ekler; kimliği zaten var olan hiçbir kart/işleme yazmaz.
+window.restoreBackup=async input=>{
+  const f=input.files?.[0];input.value='';
+  const fb=$('bk-fb');fb.className='fbk er';
+  if(!f)return;
+  if(!txsLoaded||!cardsLoaded){fb.textContent='Veriler henüz yüklenmedi, birkaç saniye sonra tekrar dene.';return;}
+  let data;
+  try{data=JSON.parse(await f.text());}catch(e){fb.textContent='Dosya okunamadı (geçerli bir Kasa yedeği değil).';return;}
+  if(data?.app!=='kasa'||!Array.isArray(data.txs)||!Array.isArray(data.cards)){fb.textContent='Bu dosya bir Kasa yedeği değil.';return;}
+  const haveT=new Set(txs.map(t=>t.id)),haveC=new Set(cards.map(c=>c.id));
+  const vT=data.txs.filter(okTx),vC=data.cards.filter(okCard);
+  const newT=vT.filter(t=>!haveT.has(t.id)),newC=vC.filter(c=>!haveC.has(c.id));
+  const bad=data.txs.length-vT.length+data.cards.length-vC.length;
+  if(!newT.length&&!newC.length){fb.className='fbk ok';fb.textContent=`Eksik kayıt yok — hiçbir şey değişmedi.${bad?` (${bad} geçersiz satır atlandı)`:''}`;return;}
+  if(!confirm(`${newT.length} işlem ve ${newC.length} kart eklenecek.\nMevcut ${txs.length} işlem ve ${cards.length} kart DEĞİŞTİRİLMEYECEK.\n\nDevam edilsin mi?`))return;
+  const ops=[...newC.map(c=>[userRef('cards'),pick(c,CARD_FIELDS)]),...newT.map(t=>[userRef('txs'),pick(t,TX_FIELDS)])];
+  try{
+    for(let i=0;i<ops.length;i+=400){
+      const b=writeBatch(db);
+      ops.slice(i,i+400).forEach(([col,d])=>b.set(doc(col,d.id),d));
+      await b.commit();
+    }
+    fb.className='fbk ok';fb.textContent=`${newT.length} işlem, ${newC.length} kart geri yüklendi.${bad?` ${bad} geçersiz satır atlandı.`:''}`;
+  }catch(e){fb.textContent='Geri yükleme hatası: '+(e?.message||e);}
 };
 
 document.getElementById('s-mo').value=localDate().slice(0,7);

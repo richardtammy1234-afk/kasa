@@ -3,6 +3,8 @@ on:
   pull_request:
   push:
     branches: [main]
+permissions:
+  contents: read
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -12,9 +14,17 @@ jobs:
         with:
           node-version: 22
       - run: npm ci
-      - run: npm test
+      - name: Birim testleri
+        run: npm test
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e
+      - name: Tarayıcı testi (sahte Firebase)
+        run: npm run test:e2e
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Gerçek Firebase SDK + yerel emülatör testi
+        run: npm run test:emulator
       - uses: actions/upload-artifact@v4
         if: always()
         with:
