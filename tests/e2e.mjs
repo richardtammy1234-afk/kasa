@@ -276,19 +276,32 @@ await step('yedek indir: tüm kart ve işlemleri içerir',async()=>{
 });
 
 await step('yedekten geri yükleme yalnızca eksikleri ekler, mevcutları değiştirmez',async()=>{
-  const file={app:'kasa',version:1,cards:[{id:'c1',name:'DEĞİŞTİRİLMİŞ'},{id:'cNew',name:'Yeni Kart',type:'Kredi',color:'#000'},{id:'cEvil',name:'Kötü',color:'red" onmouseover="x'}],
+  // Kullanıcı c2'nin adını değiştirmiş olsun (kart düzenleme ekranından)
+  await page.tap('.bni[data-tab="cards"]');
+  await page.waitForSelector('#card-grid .cgi');
+  await page.evaluate(()=>window.openCardEdit('c2'));
+  await page.fill('#c-name','Benim İş Kartım');
+  await page.tap('#card-ovl .btns');
+  await page.waitForSelector('#card-ovl',{state:'hidden'});
+  await page.tap('.bni[data-tab="home"]');await page.tap('.hico');
+  const file={app:'kasa',version:1,cards:[
+    {id:'c1',name:'Yedekteki İş Genç',type:'Kredi',color:'#123456',limit:5000,statementDay:3,dueDay:13},
+    {id:'c2',name:'Yedekteki İş',type:'Kredi',color:'#3b82f6',limit:0,statementDay:null,dueDay:null},{id:'cNew',name:'Yeni Kart',type:'Kredi',color:'#000'},{id:'cEvil',name:'Kötü',color:'red" onmouseover="x'}],
     txs:[{...SEED_TX,amount:1,description:'DEĞİŞTİRİLMİŞ'},{id:'rNew',date:TODAY,amount:12.5,description:'Geri yüklenen',category:'Kafe',cardId:'c2',extra:'atılmalı'},{id:'bad',amount:'x'},{id:'a/b',date:TODAY,amount:5,description:'x',category:'Market',cardId:'c2'}]};
   const fp=path.join(OUT,'restore-test.json');fs.writeFileSync(fp,JSON.stringify(file));
   const d=expectDialog(true);
   await page.setInputFiles('#bk-file',fp);
   await page.waitForFunction(()=>/geri yüklendi/.test(document.getElementById('bk-fb').textContent));
   assert.match(d.seen,/1 işlem ve 1 kart eklenecek/);
+  assert.match(d.seen,/1 varsayılan kart \(hiç değiştirilmemiş\) yedekteki ayarlarına döndürülecek: Yedekteki İş Genç/);
+  assert.match(d.seen,/1 kart sende farklı ayarlı; olduğu gibi kalacak/);
   const s=await store();
   assert.deepEqual(s.seed1,SEED_TX,'mevcut işlem değişmemeli');
   assert.deepEqual(s.rNew,{id:'rNew',date:TODAY,amount:12.5,description:'Geri yüklenen',category:'Kafe',cardId:'c2'});
   assert.equal(s.bad,undefined);
   const cardsNow=await page.evaluate(()=>window.__store['users/test-uid/cards']);
-  assert.equal(cardsNow.c1.name,'İş Genç','mevcut kart değişmemeli');
+  assert.deepEqual(cardsNow.c1,{id:'c1',name:'Yedekteki İş Genç',type:'Kredi',color:'#123456',limit:5000,statementDay:3,dueDay:13},'hiç değiştirilmemiş varsayılan kart yedekteki ayarları almalı');
+  assert.equal(cardsNow.c2.name,'Benim İş Kartım','kullanıcının değiştirdiği kart değişmemeli');
   assert.equal(cardsNow.cNew.name,'Yeni Kart');
   assert.equal(cardsNow.cEvil,undefined,'geçersiz renkli kart reddedilmeli');
   assert.match(await page.textContent('#bk-fb'),/3 geçersiz satır atlandı/);

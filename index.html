@@ -908,6 +908,10 @@ const pick=(o,f)=>Object.fromEntries(f.filter(k=>o[k]!==undefined).map(k=>[k,o[k
 const okId=id=>typeof id==='string'&&id.length>0&&id.length<200&&!id.includes('/')&&id!=='.'&&id!=='..';
 const okTx=t=>t&&okId(t.id)&&/^\d{4}-\d{2}-\d{2}$/.test(t.date)&&typeof t.amount==='number'&&t.amount>0&&typeof t.description==='string'&&typeof t.category==='string'&&typeof t.cardId==='string';
 const okDay=v=>v==null||(Number.isInteger(v)&&v>=1&&v<=31);
+// Kartın ayarlarını karşılaştırmak için (eksik alan = null)
+const cardSig=c=>JSON.stringify(CARD_FIELDS.map(k=>c[k]??null));
+// Uygulamanın boş hesapta kendiliğinden oluşturduğu ve kullanıcının hiç değiştirmediği varsayılan kart mı?
+const isUntouchedDefault=c=>{const d=DEFAULT_CARDS.find(x=>x.id===c.id);return !!d&&cardSig(d)===cardSig(c);};
 const okCard=c=>c&&okId(c.id)&&typeof c.name==='string'&&c.name.length>0&&(c.color==null||/^#[0-9a-f]{3,8}$/i.test(c.color))&&(c.type==null||typeof c.type==='string')&&(c.limit==null||typeof c.limit==='number')&&okDay(c.statementDay)&&okDay(c.dueDay);
 
 window.exportBackup=async()=>{
@@ -934,20 +938,28 @@ window.restoreBackup=async input=>{
   let data;
   try{data=JSON.parse(await f.text());}catch(e){fb.textContent='Dosya okunamadı (geçerli bir Kasa yedeği değil).';return;}
   if(data?.app!=='kasa'||!Array.isArray(data.txs)||!Array.isArray(data.cards)){fb.textContent='Bu dosya bir Kasa yedeği değil.';return;}
-  const haveT=new Set(txs.map(t=>t.id)),haveC=new Set(cards.map(c=>c.id));
+  const haveT=new Set(txs.map(t=>t.id)),curC=new Map(cards.map(c=>[c.id,c]));
   const vT=data.txs.filter(okTx),vC=data.cards.filter(okCard);
-  const newT=vT.filter(t=>!haveT.has(t.id)),newC=vC.filter(c=>!haveC.has(c.id));
+  const newT=vT.filter(t=>!haveT.has(t.id)),newC=vC.filter(c=>!curC.has(c.id));
+  // Boş hesapta uygulama varsayılan kartları (c1..c7) yeniden oluşturur. Bunlar HİÇ değiştirilmemişse
+  // yedekteki ad/limit/tarih/renk ayarlarıyla değiştirilir; kullanıcının değiştirdiği kartlara asla dokunulmaz.
+  const differs=c=>cardSig(c)!==cardSig(curC.get(c.id));
+  const fixC=vC.filter(c=>curC.has(c.id)&&differs(c)&&isUntouchedDefault(curC.get(c.id)));
+  const keptC=vC.filter(c=>curC.has(c.id)&&differs(c)&&!isUntouchedDefault(curC.get(c.id))).length;
   const bad=data.txs.length-vT.length+data.cards.length-vC.length;
-  if(!newT.length&&!newC.length){fb.className='fbk ok';fb.textContent=`Eksik kayıt yok — hiçbir şey değişmedi.${bad?` (${bad} geçersiz satır atlandı)`:''}`;return;}
-  if(!confirm(`${newT.length} işlem ve ${newC.length} kart eklenecek.\nMevcut ${txs.length} işlem ve ${cards.length} kart DEĞİŞTİRİLMEYECEK.\n\nDevam edilsin mi?`))return;
-  const ops=[...newC.map(c=>[userRef('cards'),pick(c,CARD_FIELDS)]),...newT.map(t=>[userRef('txs'),pick(t,TX_FIELDS)])];
+  const notes=`${keptC?` ${keptC} kart sende farklı ayarlı olduğu için olduğu gibi bırakıldı.`:''}${bad?` ${bad} geçersiz satır atlandı.`:''}`;
+  if(!newT.length&&!newC.length&&!fixC.length){fb.className='fbk ok';fb.textContent=`Eksik kayıt yok — hiçbir şey değişmedi.${notes}`;return;}
+  if(!confirm(`${newT.length} işlem ve ${newC.length} kart eklenecek.`+
+    (fixC.length?`\n${fixC.length} varsayılan kart (hiç değiştirilmemiş) yedekteki ayarlarına döndürülecek: ${fixC.map(c=>c.name).join(', ')}.`:'')+
+    `\nMevcut işlemler ve senin değiştirdiğin kartlar DEĞİŞTİRİLMEYECEK.${keptC?`\n(${keptC} kart sende farklı ayarlı; olduğu gibi kalacak.)`:''}\n\nDevam edilsin mi?`))return;
+  const ops=[...newC.map(c=>[userRef('cards'),pick(c,CARD_FIELDS)]),...fixC.map(c=>[userRef('cards'),pick(c,CARD_FIELDS)]),...newT.map(t=>[userRef('txs'),pick(t,TX_FIELDS)])];
   try{
     for(let i=0;i<ops.length;i+=400){
       const b=writeBatch(db);
       ops.slice(i,i+400).forEach(([col,d])=>b.set(doc(col,d.id),d));
       await b.commit();
     }
-    fb.className='fbk ok';fb.textContent=`${newT.length} işlem, ${newC.length} kart geri yüklendi.${bad?` ${bad} geçersiz satır atlandı.`:''}`;
+    fb.className='fbk ok';fb.textContent=`${newT.length} işlem, ${newC.length} kart geri yüklendi${fixC.length?`, ${fixC.length} kartın ayarları yedekten alındı`:''}.${notes}`;
   }catch(e){fb.textContent='Geri yükleme hatası: '+(e?.message||e);}
 };
 
