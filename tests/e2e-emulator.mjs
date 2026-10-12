@@ -71,7 +71,9 @@ await j(`${AUTH}/emulator/v1/projects/${PROJECT}/accounts`,{method:'DELETE'});
 
 const results=[];
 const step=async(name,fn)=>{try{await fn();results.push(['ok',name]);}catch(e){results.push(['FAIL',name,e.message]);}};
-const TODAY=(()=>{const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;})();
+// Tarayıcı Europe/Istanbul saat diliminde çalışır; beklenen "bugün" de aynı dilimden hesaplanmalı
+// (sunucu UTC'deyken Türkiye'de 00:00-03:00 arası farklı gün olur).
+const TODAY=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Istanbul',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 
 let uid,T,C;
 await step('Google girişi (gerçek Auth SDK, emülatör) ve varsayılan kartlar',async()=>{

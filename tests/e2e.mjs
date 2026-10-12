@@ -47,7 +47,9 @@ const STUBS={
     export const writeBatch=()=>{const ops=[];return{set:(r,d)=>ops.push(()=>setDoc(r,d)),delete:r=>ops.push(()=>deleteDoc(r)),commit:async()=>{for(const o of ops)await o();}};};`,
 };
 
-const TODAY=(()=>{const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;})();
+// Tarayıcı Europe/Istanbul saat diliminde çalışır; beklenen "bugün" de aynı dilimden hesaplanmalı
+// (sunucu UTC'deyken Türkiye'de 00:00-03:00 arası farklı gün olur).
+const TODAY=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Istanbul',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const SEED_TX={id:'seed1',date:TODAY,amount:99.9,description:'Mevcut test işlemi',category:'Market',cardId:'c3'};
 
 const browser=await chromium.launch();
