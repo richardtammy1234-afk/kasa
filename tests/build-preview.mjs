@@ -15,32 +15,46 @@ const rep=(re,to)=>{const n=s.replace(re,()=>to);if(n===s)throw new Error('Bulun
 
 // Sayfa iskeleti yayın sırasında eklenir: kendi doctype/html/head/body etiketlerini çıkar
 rep(/^[\s\S]*?<title>[^<]*<\/title>/,'<title>Kasa Önizleme</title>');
+// styles.css sayfaya gömülür; görüntüleyicinin açık/koyu seçimine de uyar
+let css=fs.readFileSync(path.join(ROOT,'styles.css'),'utf8');
+const darkM=css.match(/@media \(prefers-color-scheme:dark\)\{\n  :root\{([\s\S]*?)\n  \}\n\}/);
+if(!darkM)throw new Error('Koyu tema bloğu bulunamadı');
+css=css.replace(darkM[0],`@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){${darkM[1]}}}\n:root[data-theme="dark"]{${darkM[1]}}`);
+css=css.replace('.app{height:100vh;height:100dvh;','.app{height:100%;');
+css+='\n.demo-bar{flex-shrink:0;margin:calc(var(--safe-top) + 8px) 18px 0;padding:6px 12px;border-radius:999px;background:var(--warn-bg);color:var(--warn);font-size:11px;font-weight:600;text-align:center;}\n.demo-bar+.views .pg{padding-top:14px;}\n';
+rep(/<link rel="stylesheet" href="styles\.css[^"]*">/,`<style>${css}</style>`);
 rep(/<\/head>\s*<body>/,'');
 rep(/<\/body>\s*<\/html>\s*$/,'');
-// Tema: görüntüleyicinin açık/koyu seçimine de uy
-rep('@media(prefers-color-scheme:dark){\n  :root{','@media(prefers-color-scheme:dark){\n  :root:not([data-theme="light"]){color-scheme:dark;');
-const dark=s.match(/:root:not\(\[data-theme="light"\]\)\{([^}]*)\}/)[1];
-rep('/* LOGIN */',`:root[data-theme="dark"]{${dark}}\n/* LOGIN */`);
-rep('.app{height:100vh;height:100dvh;','.app{height:100%;');
-rep(/<img src="https:\/\/www\.google\.com\/favicon\.ico" alt="Google">/,'');
-rep('Google ile Giriş Yap','Demo hesapla gir');
-rep(/Veriler sadece senin Google hesabına bağlıdır\. Başkası göremez\./,'Bu bir önizlemedir: tüm veriler sahtedir ve yalnızca bu tarayıcı sekmesinde durur. Gerçek Kasa hesabına bağlanmaz.');
-rep('/* APP */','.demo-bar{flex-shrink:0;background:var(--amb);color:#1a1300;font-size:11px;font-weight:600;text-align:center;padding:4px 8px;letter-spacing:.2px;}\n/* APP */');
+rep('Google ile devam et','Demo hesapla gir');
+rep(/Veriler yalnızca senin Google hesabına bağlıdır\. Başkası göremez\./,'Bu bir önizlemedir: tüm veriler sahtedir ve yalnızca bu tarayıcı sekmesinde durur. Gerçek Kasa hesabına bağlanmaz.');
 rep('<div class="app" id="app" style="display:none">','<div class="app" id="app" style="display:none">\n<div class="demo-bar">ÖNİZLEME · sahte veri · gerçek hesaba bağlı değil</div>');
 
 // Firebase -> bellek içi sahte sürüm
 const today=new Date();
 const d=(back)=>{const x=new Date(today.getFullYear(),today.getMonth(),today.getDate()-back);return`${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`;};
-const demoTx=[
-  ['Migros',612.4,'Market','c2',1],['Kahve',95,'Kafe','c5',1],['Benzin',1450,'Ulaşım','c3',3],['Kahve',110,'Kafe','c5',4],
-  ['A101',238.9,'Market','c2',6],['Netflix',229.99,'Eğlence','c1',8],['Eczane',184.5,'Sağlık','c7',10],['Döner',160,'Yemek','c5',12],
-  ['Elektrik faturası',845.3,'Fatura','c7',20],['Migros',1032.15,'Market','c2',33],['Zara',1899,'Giyim','c1',38],['Benzin',1380,'Ulaşım','c3',41],
-].map(([description,amount,category,cardId,back],i)=>({id:'demo'+i,date:d(back),amount,description,category,cardId}));
+const rnd=(()=>{let x=7;return()=>{x=(x*16807)%2147483647;return x/2147483647;};})();
+const tpl=[['Migros','Market','c2',[180,900]],['A101','Market','c2',[60,320]],['Kahve','Kafe','c5',[70,140]],['Benzin','Ulaşım','c3',[900,1700]],
+  ['Döner','Yemek','c5',[120,260]],['Netflix','Eğlence','c1',[229.99,229.99]],['Eczane','Sağlık','c7',[90,450]],['Elektrik faturası','Fatura','c7',[600,950]],
+  ['Zara','Giyim','c1',[600,2200]],['Teknosa','Elektronik','c4',[400,3000]],['Taksi','Ulaşım','c6',[120,340]],['Simit','Kafe','c5',[20,45]]];
+const demoTx=[];
+for(let back=0;back<170;back++){
+  const n=back%3===0?2:1;
+  for(let k=0;k<n;k++){const t=tpl[Math.floor(rnd()*tpl.length)];const amt=Math.round((t[3][0]+rnd()*(t[3][1]-t[3][0]))*100)/100;demoTx.push({id:'demo'+demoTx.length,date:d(back),amount:amt,description:t[0],category:t[1],cardId:t[2]});}
+}
+const demoCards=[
+  {id:'c1',name:'İş Genç',type:'Kredi',color:'#ef4444',limit:40000,statementDay:5,dueDay:15},
+  {id:'c2',name:'İş',type:'Kredi',color:'#3b82f6',limit:60000,statementDay:20,dueDay:30},
+  {id:'c3',name:'QNB',type:'Kredi',color:'#10b981',limit:25000,statementDay:null,dueDay:(today.getDate()%28)+2},
+  {id:'c4',name:'QNB Fix',type:'Kredi',color:'#f59e0b',limit:0,statementDay:null,dueDay:null},
+  {id:'c5',name:'Enpara',type:'Kredi',color:'#8b5cf6',limit:15000,statementDay:12,dueDay:22},
+  {id:'c6',name:'Hadi',type:'Kredi',color:'#06b6d4',limit:0,statementDay:null,dueDay:null},
+  {id:'c7',name:'Enpara Banka',type:'Banka',color:'#ec4899',limit:0,statementDay:null,dueDay:null},
+];
 
 rep(/const firebaseConfig = \{[\s\S]*?const db = getFirestore\(app\);/,'');
 rep(/import \{ initializeApp \}[^\n]*\nimport \{ getAuth[^\n]*\nimport \{ getFirestore[^\n]*\n/,`
 // ---- DEMO: Firebase yerine bellek içi sahte sürüm ----
-const __S={'users/demo/txs':Object.fromEntries(${JSON.stringify(demoTx)}.map(t=>[t.id,t]))};const __L={};
+const __S={'users/demo/txs':Object.fromEntries(${JSON.stringify(demoTx)}.map(t=>[t.id,t])),'users/demo/cards':Object.fromEntries(${JSON.stringify(demoCards)}.map(c=>[c.id,c]))};const __L={};
 const __snap=p=>({metadata:{fromCache:false,hasPendingWrites:false},docs:Object.values(__S[p]||{}).map(x=>({data:()=>JSON.parse(JSON.stringify(x))}))});
 const __emit=p=>(__L[p]||[]).forEach(cb=>cb(__snap(p)));
 const collection=(db,p)=>({path:p.replace(/^users\\/[^/]+/,'users/demo')});

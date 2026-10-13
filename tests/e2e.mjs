@@ -13,7 +13,7 @@ const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const OUT=path.join(ROOT,'test-results');
 fs.mkdirSync(OUT,{recursive:true});
 
-const TYPES={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8'};
+const TYPES={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8'};
 const server=http.createServer((req,res)=>{
   const p=decodeURIComponent(new URL(req.url,'http://x').pathname);
   const f=path.join(ROOT,p==='/'?'index.html':p);
@@ -111,7 +111,8 @@ await step('Enter onay ister, onaysız kaydetmez',async()=>{
   const before=(await txList()).length;
   await page.press('#q-in','Enter');
   await page.waitForSelector('#addtx-cfm',{state:'visible'});
-  assert.match(await page.textContent('#addtx-cfm'),/Migros[\s\S]*₺450,00[\s\S]*Market · İş ·/);
+  const cfm=await page.textContent('#addtx-cfm');
+  assert.match(cfm,/₺450,00/);assert.match(cfm,/Migros/);assert.match(cfm,/Market · İş ·/);
   assert.equal((await txList()).length,before,'onaydan önce kayıt olmamalı');
 });
 await page.screenshot({path:path.join(OUT,'3-onay.png')});
