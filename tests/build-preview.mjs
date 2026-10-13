@@ -51,6 +51,11 @@ for(let back=0;back<185;back++){
   for(let k=0;k<n;k++){const t=pick();const amt=Math.round((t[3][0]+rnd()*(t[3][1]-t[3][0]))*100)/100;demoTx.push({id:'demo'+demoTx.length,date:d(back),amount:amt,description:t[0],category:t[1],cardId:t[2]});}
   for(const [day,desc,cat,card,amt] of fixed)if(dt.getDate()===day){const m=dt.getMonth();const a=amt??(desc.startsWith('İGDAŞ')?(m>=10||m<=2?2100:650)+Math.round(rnd()*400):880+Math.round(rnd()*420));demoTx.push({id:'demo'+demoTx.length,date:d(back),amount:a,description:desc,category:cat,cardId:card});}
 }
+// Bugünden sonraki tarihli (planlanan) birkaç sahte kayıt
+for(const [ahead,desc,cat,card,amt] of [[4,'Spor salonu üyeliği','Eğlence','c1',1250],[9,'Kasko yenileme','Ulaşım','c2',7840],[9,'Online kurs','Diğer','c5',899]]){
+  const x=new Date(today.getFullYear(),today.getMonth(),today.getDate()+ahead);
+  demoTx.push({id:'demo'+demoTx.length,date:`${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`,amount:amt,description:desc,category:cat,cardId:card});
+}
 const demoCards=[
   {id:'c1',name:'İş Genç',type:'Kredi',color:'#ef4444',limit:40000,statementDay:5,dueDay:15},
   {id:'c2',name:'İş',type:'Kredi',color:'#3b82f6',limit:60000,statementDay:20,dueDay:30},

@@ -42,7 +42,7 @@ const STUBS={
     export const collection=(db,p)=>({path:p});
     export const doc=(c,id)=>({path:c.path,id});
     export const setDoc=(r,d)=>{window.__writes.push(['set',r.path,r.id]);(S[r.path]??={})[r.id]=structuredClone(d);emit(r.path);return window.__offline?pending():Promise.resolve();};
-    export const deleteDoc=async r=>{window.__writes.push(['del',r.path,r.id]);delete (S[r.path]||{})[r.id];emit(r.path);};
+    export const deleteDoc=async r=>{window.__writes.push(['del',r.path,r.id]);if(window.__failDel){throw Object.assign(new Error('izin yok'),{code:'permission-denied'});}delete (S[r.path]||{})[r.id];emit(r.path);};
     export const onSnapshot=(c,cb)=>{(L[c.path]??=[]).push(cb);setTimeout(()=>cb(snap(c.path)),0);return()=>{};};
     export const writeBatch=()=>{const ops=[];return{set:(r,d)=>ops.push(()=>setDoc(r,d)),delete:r=>ops.push(()=>deleteDoc(r)),commit:async()=>{for(const o of ops)await o();}};};`,
 };
@@ -51,11 +51,14 @@ const STUBS={
 // (sunucu UTC'deyken Türkiye'de 00:00-03:00 arası farklı gün olur).
 const TODAY=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Istanbul',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const SEED_TX={id:'seed1',date:TODAY,amount:99.9,description:'Mevcut test işlemi',category:'Market',cardId:'c3'};
+// Bilerek ileri tarihli (planlanan) kayıt: tarihi asla değişmemeli
+const FUT_DATE=(()=>{const [y,m,d]=TODAY.split('-').map(Number);const x=new Date(Date.UTC(y+1,m-1,Math.min(d,28)));return x.toISOString().slice(0,10);})();
+const FUT_TX={id:'fut1',date:FUT_DATE,amount:229.99,description:'NETFLIX',category:'Eğlence',cardId:'c1'};
 
 const browser=await chromium.launch();
 const ctx=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true,locale:'tr-TR',timezoneId:'Europe/Istanbul',
   userAgent:'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'});
-await ctx.addInitScript(seed=>{window.__store={'users/test-uid/txs':{[seed.id]:seed}};window.__writes=[];},SEED_TX);
+await ctx.addInitScript(seed=>{window.__store={'users/test-uid/txs':{[seed[0].id]:seed[0],[seed[1].id]:seed[1]}};window.__writes=[];},[SEED_TX,FUT_TX]);
 // Dış ağ: Firebase sahte modüllerle, Chart.js boş bir sahteyle; geri kalan her şey engellenir
 await ctx.route(/^https?:\/\/(?!127\.0\.0\.1)/,route=>{
   const u=route.request().url();
@@ -220,14 +223,58 @@ await step('işlemler sekmesi (arama + ay filtresi) ve kartlar sekmesi çalış�
   await page.waitForFunction(()=>document.querySelectorAll('#txs-wrap .txi').length===1);
   assert.match(await page.textContent('#txs-wrap'),/Mevcut test işlemi/);
   await page.fill('#s-q','');
+  await page.tap('#f-btn');
   await page.fill('#s-mo','2001-01');await page.dispatchEvent('#s-mo','change');
-  assert.match(await page.textContent('#txs-wrap'),/İşlem bulunamadı/);
+  assert.match(await page.textContent('#txs-wrap'),/işlem bulunamadı/);
   await page.fill('#s-mo','');await page.dispatchEvent('#s-mo','change');
+  await page.tap('#f-btn');
   await page.tap('.bni[data-tab="cards"]');
   await page.waitForSelector('#card-grid .cgi');
   await page.tap('.bni[data-tab="home"]');
 });
 await page.screenshot({path:path.join(OUT,'5-sonra.png')});
+
+await step('ileri tarihli işlem görünür, aranabilir, "Planlanan" etiketlidir; tarihi değişmez',async()=>{
+  await page.tap('.bni[data-tab="txs"]');
+  await page.tap('#act-f .pill.clr').catch(()=>{});
+  // Gelecek yıldaki kayıt "Bu ay" içinde değil: arama boş kalmaz, diğer dönemdeki sonucu önerir
+  await page.fill('#s-q','netflix');
+  await page.waitForSelector('#txs-wrap .emp button');
+  assert.match(await page.textContent('#txs-wrap .emp'),/Tüm zamanlarda 1 sonuç/);
+  await page.tap('#txs-wrap .emp button');
+  await page.waitForFunction(()=>document.querySelectorAll('#txs-wrap .txi').length===1);
+  assert.match(await page.textContent('#txs-wrap'),/Planlanan · 1 işlem[\s\S]*NETFLIX/);
+  assert.ok(await page.locator('#txs-wrap .txi.pl').count()===1,'planlanan satır işaretli olmalı');
+  await page.fill('#s-q','');
+  // Dönem filtresi: Planlanan yalnızca bugünden sonraki kayıtları gösterir
+  await page.tap('#f-btn');await page.tap('#s-per-chips .ch[data-per="plan"]');
+  await page.waitForFunction(()=>document.querySelectorAll('#txs-wrap .txi').length===1);
+  assert.match(await page.textContent('#txs-wrap'),/NETFLIX/);
+  assert.match(await page.textContent('#act-f'),/Planlanan/);
+  await page.tap('#act-f .pill.clr');await page.tap('#f-btn');
+  const s=await store();
+  assert.deepEqual(s.fut1,FUT_TX,'planlanan kaydın tarihi ve alanları değişmemeli');
+  assert.equal((await page.evaluate(()=>window.__writes)).filter(w=>w[2]==='fut1').length,0);
+});
+
+await step('kompakt filtre: kart seçimi rozet ve kaldırılabilir etiket gösterir',async()=>{
+  await page.tap('#f-btn');
+  assert.equal(await page.getAttribute('#f-btn','aria-expanded'),'true');
+  await page.tap('#s-crd-chips .ch[data-cid="c3"]');
+  assert.equal(await page.textContent('#f-bdg'),'1');
+  assert.ok(await page.isVisible('#f-bdg'));
+  await page.waitForFunction(()=>[...document.querySelectorAll('#txs-wrap .txi')].every(r=>/QNB/.test(r.textContent)));
+  await page.tap('#f-btn');
+  assert.ok(await page.isHidden('#f-panel'));
+  await page.tap('#act-f .pill[aria-label*="QNB"]');
+  assert.ok(await page.isHidden('#f-bdg'));
+  // Türkçe büyük/küçük harf: "MEVCUT" ve "mevcut" aynı sonucu verir
+  await page.fill('#s-q','MEVCUT TEST İŞLEMİ');
+  await page.waitForFunction(()=>document.querySelectorAll('#txs-wrap .txi').length===1);
+  await page.fill('#s-q','');
+  await page.tap('.bni[data-tab="home"]');
+});
+await page.screenshot({path:path.join(OUT,'5b-filtre.png')});
 
 
 await step('internet yokken art arda iki kayıt yapılabilir (kilitlenme yok)',async()=>{
@@ -320,6 +367,82 @@ await step('geri yükleme Kasa dışı dosyayı reddeder',async()=>{
 await step('hiçbir işlem silinmedi',async()=>{
   const dels=await page.evaluate(()=>window.__writes.filter(w=>w[0]==='del'));
   assert.deepEqual(dels,[]);
+});
+
+await step('tek işlem silme: önce ayrıntı, sonra açık onay; "Vazgeç" hiçbir şey silmez',async()=>{
+  await page.tap('.bni[data-tab="txs"]');
+  await page.locator('#txs-wrap .txi[data-id="seed1"]').tap();
+  await page.waitForSelector('#tx-ovl.on');
+  assert.match(await page.textContent('#tx-ovl'),/Mevcut test işlemi[\s\S]*₺99,90[\s\S]*Market[\s\S]*QNB/);
+  assert.ok(await page.isHidden('#txd-cfm'),'onay hemen görünmemeli');
+  await page.tap('#txd-del');
+  assert.ok(await page.isVisible('#txd-cfm'));
+  await page.tap('#txd-no');
+  assert.ok(await page.isHidden('#txd-cfm'));
+  await page.tap('#tx-ovl',{position:{x:20,y:20}});
+  await page.waitForSelector('#tx-ovl',{state:'hidden'});
+  assert.equal((await page.evaluate(()=>window.__writes)).filter(w=>w[0]==='del').length,0);
+  assert.deepEqual((await store()).seed1,SEED_TX);
+});
+await page.screenshot({path:path.join(OUT,'6-ayrinti.png')});
+
+await step('silme geri alınabilir: "Geri al" kaydı hiç silmeden geri getirir',async()=>{
+  await page.locator('#txs-wrap .txi[data-id="seed1"]').tap();
+  await page.tap('#txd-del');await page.tap('#txd-yes');
+  await page.waitForSelector('#toast',{state:'visible'});
+  assert.match(await page.textContent('#toast'),/Mevcut test işlemi” silinecek/);
+  assert.equal(await page.locator('#txs-wrap .txi[data-id="seed1"]').count(),0,'satır ekrandan kalkmalı');
+  assert.equal((await page.evaluate(()=>window.__writes)).filter(w=>w[0]==='del').length,0,'geri alma süresinde silinmemeli');
+  await page.tap('#toast-undo');
+  await page.waitForSelector('#txs-wrap .txi[data-id="seed1"]');
+  await page.waitForTimeout(6500);
+  assert.equal((await page.evaluate(()=>window.__writes)).filter(w=>w[0]==='del').length,0);
+  assert.deepEqual((await store()).seed1,SEED_TX);
+});
+
+const setHidden=h=>page.evaluate(h=>{Object.defineProperty(document,'visibilityState',{value:h?'hidden':'visible',configurable:true});document.dispatchEvent(new Event('visibilitychange'));},h);
+const delCount=async id=>(await page.evaluate(()=>window.__writes)).filter(w=>w[0]==='del'&&w[2]===id).length;
+
+await step('arka plana alınınca bekleyen silme hızlandırılmaz; sayaç durur, dönünce sürer',async()=>{
+  await page.locator('#txs-wrap .txi[data-id="seed1"]').tap();
+  await page.tap('#txd-del');await page.tap('#txd-yes');
+  await setHidden(true);
+  await page.waitForTimeout(8000);
+  assert.equal(await delCount('seed1'),0,'arka planda silme gönderilmemeli');
+  assert.ok((await store()).seed1);
+  await setHidden(false);
+  assert.match(await page.textContent('#toast'),/silinecek/,'dönünce geri al yeniden sunulmalı');
+  await page.tap('#toast-undo');
+  await page.waitForSelector('#txs-wrap .txi[data-id="seed1"]');
+  await page.waitForTimeout(3500);
+  assert.equal(await delCount('seed1'),0);
+});
+
+await step('çift dokunuş tek silme isteği üretir; başarısızlık açıkça bildirilir ve kayıt geri gelir',async()=>{
+  await page.evaluate(()=>{window.__failDel=true;});
+  await page.locator('#txs-wrap .txi[data-id="seed1"]').tap();
+  await page.tap('#txd-del');
+  await page.evaluate(()=>{window.confirmDelTx();window.confirmDelTx();});
+  await page.waitForFunction(()=>/silinemedi; kayıt yerinde/.test(document.getElementById('toast').textContent),null,{timeout:9000});
+  assert.equal(await delCount('seed1'),1,'tek istek gönderilmeli');
+  assert.ok((await store()).seed1);
+  await page.waitForSelector('#txs-wrap .txi[data-id="seed1"]');
+  await page.evaluate(()=>{window.__failDel=false;});
+});
+await page.screenshot({path:path.join(OUT,'7b-silinemedi.png')});
+
+await step('onaylanan silme süre dolunca yalnızca o işlemi siler',async()=>{
+  const before=Object.keys(await store()).length;
+  await page.locator('#txs-wrap .txi[data-id="seed1"]').tap();
+  await page.tap('#txd-del');await page.tap('#txd-yes');
+  await page.screenshot({path:path.join(OUT,'7-geri-al.png')});
+  await page.waitForFunction(()=>!window.__store['users/test-uid/txs'].seed1,null,{timeout:9000});
+  await page.waitForFunction(()=>/Mevcut test işlemi” silindi/.test(document.getElementById('toast').textContent));
+  assert.equal(await delCount('seed1'),2,'bir başarısız + bir başarılı istek');
+  assert.equal((await page.evaluate(()=>window.__writes)).filter(w=>w[0]==='del'&&w[2]!=='seed1').length,0);
+  assert.equal(Object.keys(await store()).length,before-1);
+  assert.deepEqual((await store()).fut1,FUT_TX,'planlanan kayıt korunmalı');
+  await page.tap('.bni[data-tab="home"]');await page.tap('.hico');
 });
 
 await step('"Tüm işlemleri sil" doğru onayla çalışır (sahte veride)',async()=>{

@@ -96,7 +96,7 @@ await step('mevcut kayıt sayfa yenilenince oturum korunarak görünür',async()
   await page.reload();
   await page.waitForSelector('#app',{state:'visible'});
   await page.tap('.bni[data-tab="txs"]');
-  await page.fill('#s-mo','');await page.dispatchEvent('#s-mo','change');
+  await page.tap('#f-btn');await page.fill('#s-mo','');await page.dispatchEvent('#s-mo','change');await page.tap('#f-btn');
   await page.waitForFunction(()=>/Eski kayıt/.test(document.getElementById('txs-wrap').textContent),null,{timeout:15000});
   await page.tap('.bni[data-tab="home"]');
 });
