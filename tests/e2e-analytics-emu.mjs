@@ -1,5 +1,7 @@
 // Gerçekleşen / planlanan hesapları — GERÇEK Firebase SDK + Firestore emülatörü ile.
-// Saat sabitlenir (yalnızca Date; zamanlayıcılar normal çalışır). Tüm veriler sahtedir; üretime istek gitmez.
+// Saat geçmiş bir tarihe alınır ve oradan AKAR (setSystemTime). setFixedTime kullanılmaz: Firebase SDK'sının
+// bağlantı bekçisi (WebChannel WatchDog) zaman aşımını Date.now() farkıyla ölçer; donmuş saatte hiç tetiklenmez,
+// yavaş ortamda (CI) kopan dinleme bağlantısı yenilenmez ve yeni kayıtlar uygulamaya ulaşmaz. Tüm veriler sahtedir; üretime istek gitmez.
 // Doğrulananlar: ekran rakamları, grafik uyumu, gün/ay geçişinde verinin hiç yazılmaması,
 // yedek dosyasının tarih ve alanları birebir taşıması, geri yüklemenin değişmemesi, arama ve filtre.
 import fs from 'node:fs';
@@ -19,7 +21,7 @@ const errors=[];
 page.on('pageerror',e=>errors.push(e.message));
 page.on('dialog',d=>{errors.push('beklenmeyen dialog: '+d.message());d.dismiss();});
 // Geçmiş bir "bugün": Auth belirteçleri gerçek saatle üretildiği için geçerliliğini korur
-await page.clock.setFixedTime(at('2026-03-30'));
+await page.clock.setSystemTime(at('2026-03-30'));
 await page.goto(BASE);
 await page.tap('.google-btn');
 await page.waitForSelector('#app',{state:'visible'});
@@ -39,10 +41,17 @@ const ORIG=await snapshot(uid);
 const txt=sel=>page.innerText(sel).then(s=>s.replace(/\s+/g,' ').trim());
 const dk=sel=>page.getAttribute(sel,'data-k').then(Number);
 const svgK=(sel,a)=>page.getAttribute(`${sel} svg`,a).then(Number);
-const rollTo=async t=>{await page.clock.setFixedTime(t);await page.evaluate(()=>window.__kasaCheckDay());};
+const rollTo=async t=>{await page.clock.setSystemTime(t);await page.evaluate(()=>window.__kasaCheckDay());};
+// Gerçek SDK eşitlemesi eşzamansızdır: değeri hemen okumak yerine beklenen değere ulaşmasını bekle
+const waitK=(sel,k,ms=20000)=>page.waitForFunction(([sel,k])=>+document.querySelector(sel)?.dataset.k===k,[sel,k],{timeout:ms});
 
 await step('gerçek SDK: 30 Mart\'ta gerçekleşen 1.700, planlanan 120,50, toplam 1.820,50',async()=>{
-  await page.waitForFunction(()=>+document.getElementById('hero-v')?.dataset.k===170000,null,{timeout:15000});
+  await waitK('#hero-v',170000);
+  // Tüm sahte kayıtlar (Nisan'dakiler dahil) uygulamaya ulaşmadan hiçbir hesap doğrulanmaz
+  await page.tap('.bni[data-tab="txs"]');
+  await page.tap('#f-btn');await page.tap('#s-per-chips .ch[data-per=""]');await page.tap('#f-btn');
+  await page.waitForFunction(()=>document.querySelectorAll('#txs-wrap .txi').length===8,null,{timeout:20000});
+  await page.tap('.bni[data-tab="home"]');
   const h=await txt('#home-hero');
   assert.match(h,/Planlanan ₺120,50/);assert.match(h,/Toplam kayıtlı ₺1\.820,50/);
   assert.match(h,/Günlük ortalama ₺57/);
@@ -64,12 +73,12 @@ await page.screenshot({path:path.join(OUT,'emu-an-kartlar.png')});
 await step('gün ve ay geçişi: planlanan → gerçekleşen; Firestore\'a hiçbir yazma yok',async()=>{
   await page.tap('.bni[data-tab="home"]');
   await rollTo(at('2026-03-31','00:00'));
-  assert.equal(await dk('#hero-v'),182050);
+  await waitK('#hero-v',182050);
   await rollTo(at('2026-04-01','00:00'));
   assert.match(await txt('#home-hero'),/Mart 2026 harcaması ₺1\.820,50/);
   assert.match(await txt('#home-hero'),/Geçen aya göre \(tam ay\) ₺320,50 daha fazla/);
   await page.evaluate(()=>window.chM(1));
-  assert.equal(await dk('#hero-v'),22999);
+  await waitK('#hero-v',22999);
   await page.waitForTimeout(1500);
   assert.deepEqual(await snapshot(uid),ORIG,'tarih geçişi veriyi değiştirmemeli');
 });
