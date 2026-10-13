@@ -7,10 +7,10 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Kasa">
-<meta name="theme-color" content="#F5F3F1" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#111013" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#EEEEF0" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0D0D0F" media="(prefers-color-scheme: dark)">
 <title>Kasa — Harcama Takibi</title>
-<link rel="stylesheet" href="styles.css?v=3">
+<link rel="stylesheet" href="styles.css?v=4">
 </head>
 <body>
 
@@ -56,58 +56,58 @@
   <!-- ANA SAYFA -->
   <div class="v on" id="v-home">
     <div class="pg">
-      <div class="top">
-        <div class="top-l">
-          <div class="hello" id="greeting">Merhaba</div>
-          <div class="sync" id="sync-status">Senkronize ediliyor…</div>
+      <div class="bar3">
+        <button class="hico" onclick="goTab('settings')" aria-label="Ayarlar"><svg class="i"><use href="#i-gear"/></svg></button>
+        <div class="msel">
+          <button class="marr" onclick="chM(-1)" aria-label="Önceki ay"><svg class="i"><use href="#i-left"/></svg></button>
+          <div class="mn" id="mn1"></div>
+          <button class="marr" onclick="chM(1)" aria-label="Sonraki ay"><svg class="i"><use href="#i-right"/></svg></button>
         </div>
-        <div class="top-r">
-          <button class="hico" onclick="goTab('settings')" aria-label="Ayarlar"><svg class="i"><use href="#i-gear"/></svg></button>
-          <button class="hico" id="nbn-bell" onclick="goTab('cards')" aria-label="Ödeme uyarıları"><svg class="i"><use href="#i-bell"/></svg><span class="ndot" id="ndot"></span></button>
-          <img class="avatar" id="user-avatar" onclick="signOut()" title="Çıkış yap" alt="" style="display:none">
-        </div>
+        <button class="hico" id="nbn-bell" onclick="goTab('cards')" aria-label="Ödeme uyarıları"><svg class="i"><use href="#i-bell"/></svg><span class="ndot" id="ndot"></span></button>
       </div>
+      <img class="avatar" id="user-avatar" onclick="signOut()" title="Çıkış yap" alt="" style="display:none">
 
-      <div class="hero" id="home-hero"></div>
+      <div style="padding:6px 4px 0"><div class="hello" id="greeting">Merhaba</div><div class="hello-s" id="hello-s"></div></div>
+      <div class="sum" id="home-hero"></div>
 
       <button class="qbar" onclick="openAddTx()">
+        <div class="qbar-t"><b>Harcama ekle</b><span>örn. Migros 450 İş Bankası</span></div>
         <span class="qplus"><svg class="i"><use href="#i-plus"/></svg></span>
-        <span>Harcama ekle — örn. Migros 450 İş Bankası</span>
       </button>
 
       <div class="alrts" id="home-alrts"></div>
 
-      <div class="mets" id="home-mets"></div>
+      <div class="tiles" id="home-mets"></div>
 
       <div class="sec" id="home-cats-sec">
-        <div class="sh"><div class="st">Kategoriler</div><button class="sl" onclick="goTab('trend')">Analiz ›</button></div>
-        <div class="panel pad cats" id="home-cats"></div>
+        <div class="sh"><div class="st">Kategoriler</div><button class="sl" onclick="goTab('trend')">Analiz</button></div>
+        <div class="tiles" id="home-cats"></div>
       </div>
 
       <div class="sec">
-        <div class="sh"><div class="st">Kartlar</div><button class="sl" onclick="goTab('cards')">Tümü ›</button></div>
-        <div class="ccar" id="home-ccar"></div>
+        <div class="sh"><div class="st">Kartlar</div><button class="sl" onclick="goTab('cards')">Tümü</button></div>
+        <div class="tiles" id="home-ccar"></div>
       </div>
 
       <div class="sec">
-        <div class="sh"><div class="st">Son işlemler</div><button class="sl" onclick="goTab('txs')">Tümü ›</button></div>
+        <div class="sh"><div class="st">Son işlemler</div><button class="sl" onclick="goTab('txs')">Tümü</button></div>
         <div class="txw" id="home-txs"></div>
       </div>
+      <div class="sync" id="sync-status" style="text-align:center;font-size:11px;color:var(--ink-3)">Senkronize ediliyor…</div>
     </div>
   </div>
 
   <!-- İŞLEMLER -->
   <div class="v" id="v-txs">
     <div class="pg">
-      <div class="ttl">İşlemler</div>
+      <div class="bar3"><span></span><div class="bar3-t">İşlemler</div><span></span></div>
+      <div class="sum" id="txs-sum"></div>
       <div class="srch">
         <div class="sbox"><svg class="i"><use href="#i-search"/></svg><input type="text" id="s-q" placeholder="İşlem ara" oninput="renderTxs()" enterkeyhint="search"></div>
         <div class="mbox"><input type="month" id="s-mo" onchange="renderTxs()" aria-label="Ay"></div>
       </div>
       <div class="flt">
-        <div class="flt-l">Kart</div>
         <div class="chips" id="s-crd-chips"></div>
-        <div class="flt-l">Kategori</div>
         <div class="chips" id="s-cat-chips"></div>
       </div>
       <div id="txs-wrap"></div>
@@ -117,14 +117,10 @@
   <!-- KARTLAR -->
   <div class="v" id="v-cards">
     <div class="pg">
-      <div class="top">
-        <div class="ttl">Kartlar</div>
-        <div class="msel">
-          <button class="marr" onclick="chM(-1)" aria-label="Önceki ay"><svg class="i"><use href="#i-left"/></svg></button>
-          <div class="mn" id="mn2"></div>
-          <button class="marr" onclick="chM(1)" aria-label="Sonraki ay"><svg class="i"><use href="#i-right"/></svg></button>
-        </div>
-      </div>
+      <div class="bar3"><span></span><div class="bar3-t">Kartlar</div><button class="hico" onclick="window.openCardAdd()" aria-label="Yeni kart"><svg class="i"><use href="#i-plus"/></svg></button></div>
+      <div class="mtabs" id="mt-cards"></div>
+      <span id="mn2" hidden></span>
+      <div class="sum" id="cards-sum"></div>
       <div class="alrts" id="cards-alrts"></div>
       <div class="cgr" id="card-grid"></div>
     </div>
@@ -133,29 +129,28 @@
   <!-- ANALİZ -->
   <div class="v" id="v-trend">
     <div class="pg">
-      <div class="top">
-        <div class="ttl">Analiz</div>
-        <div class="msel">
-          <button class="marr" onclick="chM(-1)" aria-label="Önceki ay"><svg class="i"><use href="#i-left"/></svg></button>
-          <div class="mn" id="mn3"></div>
-          <button class="marr" onclick="chM(1)" aria-label="Sonraki ay"><svg class="i"><use href="#i-right"/></svg></button>
-        </div>
-      </div>
-      <div class="cmp" id="an-cmp"></div>
-      <div class="cc2"><div class="ctt"><b>Son 6 ay</b><span>aylık toplam</span></div><div class="chart"><canvas id="tc1"></canvas></div></div>
-      <div class="cc2"><div class="ctt"><b>Kategori dağılımı</b><span id="cat-sum"></span></div>
-        <div class="donut-wrap"><div class="donut"><canvas id="tc2"></canvas><div class="donut-c" id="donut-c"></div></div><div class="leg" id="cat-leg"></div></div>
-      </div>
-      <div class="cc2"><div class="ctt"><b>Kartlara göre</b><span>bu ay</span></div><div class="hbars" id="crd-bars"></div></div>
+      <div class="bar3"><span></span><div class="bar3-t">Harcama analizi</div><span></span></div>
+      <div class="mtabs" id="mt-trend"></div>
+      <span id="mn3" hidden></span>
+      <div class="sum" id="an-sum"></div>
+      <div class="panel pad dbars" id="an-bars"></div>
+      <div class="sh"><div class="st">Kategoriler</div><span class="tf" id="cat-sum"></span></div>
+      <div class="tiles" id="cat-leg"></div>
+      <div class="sh"><div class="st">Özet</div></div>
+      <div class="wgrid" id="an-cmp"></div>
+      <div class="sh"><div class="st">Kartlara göre</div></div>
+      <div class="tiles" id="crd-bars"></div>
+      <div class="sh"><div class="st">Son 6 ay</div></div>
+      <div class="panel pad dbars" id="an-6m"></div>
     </div>
   </div>
 
   <!-- AYARLAR -->
   <div class="v" id="v-settings">
     <div class="pg">
-      <div class="top">
-        <div class="ttl">Ayarlar</div>
-        <button class="hico" onclick="goTab('home')" aria-label="Ana sayfa"><svg class="i"><use href="#i-home"/></svg></button>
+      <div class="bar3">
+        <button class="hico" onclick="goTab('home')" aria-label="Geri"><svg class="i"><use href="#i-left"/></svg></button>
+        <div class="bar3-t">Ayarlar</div><span></span>
       </div>
       <div class="panel prof" id="user-card">
         <img id="settings-avatar" alt="">
@@ -230,7 +225,7 @@
         <div class="fg"><label for="c-due">Son ödeme günü</label><input type="number" id="c-due" placeholder="1–28" min="1" max="28" inputmode="numeric"></div>
       </div>
     </div>
-    <div class="fg"><label>Renk</label><div class="crow" id="c-colors"></div></div>
+    <div class="fbox"><div class="fg"><label>Renk</label><div class="crow" id="c-colors"></div></div></div>
     <span class="fbk" id="card-fb"></span>
     <div class="sbt">
       <button class="btnd" id="card-del-btn" onclick="deleteCard()">Sil</button>
@@ -244,11 +239,13 @@
   <div class="sht">
     <div class="shdl"></div>
     <div class="shtt">İşlem ekle</div>
+    <div class="amt"><div class="amt-v num empty" id="amt-v">₺0<span class="dec">,00</span></div><div class="amt-s" id="amt-s">Tutarı hızlı girişe veya aşağıya yaz</div></div>
+    <div class="picks" id="crd-picks"></div>
     <div class="qk">
-      <div class="qk-f"><div class="qk-in">
+      <div class="qk-in">
         <svg class="i"><use href="#i-spark"/></svg>
         <input type="text" id="q-in" aria-label="Hızlı giriş" placeholder="Migros 450 İş Bankası" autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="false" enterkeyhint="done" oninput="window.onQuick()" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();window.reviewTx();}">
-      </div></div>
+      </div>
       <div class="qk-cap">Açıklama, tutar ve kartı tek satırda yaz; alanlar kendiliğinden dolar.</div>
       <div class="qk-hint" id="q-hint"></div>
       <div class="chips" id="q-sugs"></div>
@@ -433,21 +430,28 @@ const nextDue=dy=>{if(!dy)return null;const t=new Date();t.setHours(0,0,0,0);let
 const daysUntil=d=>{if(!d)return null;const t=new Date();t.setHours(0,0,0,0);return Math.ceil((d-t)/864e5);};
 const getDueAlerts=()=>{const a=[];cards.forEach(c=>{if(!c.dueDay)return;const d=nextDue(c.dueDay);const dy=daysUntil(d);if(dy!==null&&dy<=3)a.push({card:c,d,dy});});return a;};
 
-const renderAlerts=id=>{
-  const a=getDueAlerts();const el=document.getElementById(id);if(!el)return;
+const renderAlerts=(id,urgentOnly=false)=>{
+  const all=getDueAlerts();const a=urgentOnly?all.filter(x=>x.dy<=1):all;const el=document.getElementById(id);if(!el)return;
   el.innerHTML=a.map(({card,d,dy})=>{
     const cls=dy<=1?'d':'w';
-    const msg=dy===0?`<b>${esc(card.name)}</b> son ödeme günü <b>bugün</b>`:dy<0?`<b>${esc(card.name)}</b> ödemesi gecikmiş`:`<b>${esc(card.name)}</b> son ödeme ${dy} gün sonra · ${d.toLocaleDateString('tr-TR',{day:'numeric',month:'long'})}`;
+    const msg=dy===0?`<b>${esc(card.name)}</b> son ödeme günü bugün`:dy<0?`<b>${esc(card.name)}</b> ödemesi gecikmiş`:`<b>${esc(card.name)}</b> son ödeme ${dy} gün sonra · ${d.toLocaleDateString('tr-TR',{day:'numeric',month:'long'})}`;
     return`<div class="alrt ${cls}"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg><span>${msg}</span></div>`;
   }).join('');
-  document.getElementById('ndot')?.classList.toggle('on',a.length>0);
-  document.getElementById('bni-cards-dot')?.classList.toggle('on',a.length>0);
+  document.getElementById('ndot')?.classList.toggle('on',all.length>0);
+  document.getElementById('bni-cards-dot')?.classList.toggle('on',all.length>0);
 };
 
 const monthLabel=d=>d.toLocaleDateString('tr-TR',{month:'long',year:'numeric'});
+const monthName=d=>d.toLocaleDateString('tr-TR',{month:'long'});
 const updateMLabels=()=>{
   const lbl=monthLabel(curMonth);
   ['mn1','mn2','mn3'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=lbl;});
+  // Ay sekmeleri: iki önceki ay, seçili ay ve (geçmişteyse) bir sonraki ay
+  const now=new Date();const last=new Date(now.getFullYear(),now.getMonth(),1);
+  const tabs=[-2,-1,0,1].map(o=>new Date(curMonth.getFullYear(),curMonth.getMonth()+o,1)).filter(d=>d<=last);
+  ['mt-cards','mt-trend'].forEach(id=>{const el=document.getElementById(id);if(!el)return;
+    el.innerHTML=`<button class="mtab" onclick="chM(-1)" aria-label="Önceki ay">‹</button>`+tabs.map(d=>{const o=(d.getFullYear()-curMonth.getFullYear())*12+d.getMonth()-curMonth.getMonth();
+      return`<button class="mtab${o===0?' on':''}" onclick="chM(${o})">${monthName(d)}${d.getFullYear()!==now.getFullYear()?' '+d.getFullYear():''}</button>`;}).join('');});
 };
 
 window.goTab=tab=>{
@@ -462,6 +466,7 @@ window.goTab=tab=>{
 };
 
 window.chM=d=>{
+  if(!d)return;
   curMonth=new Date(curMonth.getFullYear(),curMonth.getMonth()+d,1);
   updateMLabels();
   const av=document.querySelector('.v.on')?.id;
@@ -470,101 +475,108 @@ window.chM=d=>{
   if(av==='v-trend')renderTrend();
 };
 
-// Tutarı büyük (tam kısım) ve küçük (kuruş) olarak böl
+// Tutar: tam kısım + küçük gri kuruş
 const fmtSplit=n=>{const s=fmt(n);const i=s.lastIndexOf(',');return i<0?esc(s):`${esc(s.slice(0,i))}<span class="dec">${esc(s.slice(i))}</span>`;};
+const fmt0=n=>'₺'+Math.round(n).toLocaleString('tr-TR');
 const pct=(a,b)=>b>0?Math.round(a/b*100):0;
 const keyOf=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
 const sumOf=a=>a.reduce((s,t)=>s+t.amount,0);
+const dayOf=t=>+String(t.date).slice(8,10);
+const initials=(n,k=1)=>String(n||'?').split(/\s+/).filter(Boolean).slice(0,k).map(w=>w.charAt(0).toLocaleUpperCase('tr-TR')).join('');
+
+// Seçili ayın özet ölçüleri (tüm ekranlarda aynı hesap)
+const monthStats=()=>{
+  const mt=mTxs(curKey());const total=sumOf(mt);
+  const prevD=new Date(curMonth.getFullYear(),curMonth.getMonth()-1,1);
+  const pt=mTxs(keyOf(prevD));const pTotal=sumOf(pt);
+  const now=new Date();const isCur=curMonth.getFullYear()===now.getFullYear()&&curMonth.getMonth()===now.getMonth();
+  const dim=new Date(curMonth.getFullYear(),curMonth.getMonth()+1,0).getDate();
+  const days=isCur?now.getDate():dim;
+  const pSame=isCur?sumOf(pt.filter(t=>dayOf(t)<=days)):pTotal;
+  const daily=new Array(dim).fill(0);mt.forEach(t=>{const d=dayOf(t);if(d>=1&&d<=dim)daily[d-1]+=t.amount;});
+  const catT={};mt.forEach(t=>catT[t.category]=(catT[t.category]||0)+t.amount);
+  const catE=Object.entries(catT).sort((a,b)=>b[1]-a[1]);
+  return{mt,total,pt,pTotal,pSame,isCur,dim,days,daily,catE,prevD};
+};
+// Karşılaştırma cümlesi (yalnızca harcama; bakiye/birikim varsayımı yok)
+const cmpText=st=>{
+  if(!st.pSame)return'Geçen ay bu döneme ait kayıt yok';
+  const d=st.total-st.pSame;const base=st.isCur?'geçen ayın aynı dönemine göre':'geçen aya göre';
+  return`${base} <b>${fmt(Math.abs(d))} ${d>0?'daha fazla':'daha az'}</b>`;
+};
 
 const txItemHTML=(t,del=false)=>{
   const cat=getCat(t.category);const card=getCard(t.cardId);
   const dt=new Date(t.date+'T00:00').toLocaleDateString('tr-TR',{day:'numeric',month:'short'});
   return`<div class="txi">
-    <div class="ico" style="background:${cat.c}1f;color:${cat.c}">${cat.n.charAt(0)}</div>
+    <div class="ico">${initials(t.description)}</div>
     <div class="txd">
       <div class="txn">${esc(t.description)}</div>
       <div class="txm">${del?'':dt+' · '}${cat.n} · <span class="dot" style="background:${card.color}"></span>${esc(card.name)}</div>
     </div>
-    <div class="txa num">−${fmt(t.amount)}</div>
+    <div class="txa num">−${fmtSplit(t.amount)}</div>
     ${del?`<button class="txdl" onclick="window.delTx('${t.id}')" aria-label="Sil">×</button>`:''}
   </div>`;
 };
 
-// Günlük birikimli harcama çizgisi (bu ay ve geçen ay) — kütüphanesiz SVG
-const sparkSVG=(cur,prev,daysCur,daysPrev,todayIdx)=>{
-  const W=320,H=64,P=4;
-  const cum=(arr,n)=>{const out=[];let s=0;for(let i=0;i<n;i++){s+=arr[i]||0;out.push(s);}return out;};
-  const c=cum(cur,todayIdx),p=cum(prev,daysPrev);
-  const max=Math.max(1,...c,...p);
-  const days=Math.max(daysCur,daysPrev);
-  const pt=(v,i)=>`${(P+i/(days-1)*(W-2*P)).toFixed(1)},${(H-P-v/max*(H-2*P)).toFixed(1)}`;
-  const line=a=>a.map((v,i)=>pt(v,i)).join(' ');
-  const area=c.length?`M${pt(0,0)} L${line(c)} L${pt(0,c.length-1)} Z`:'';
-  const last=c.length?pt(c[c.length-1],c.length-1).split(','):null;
-  return`<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
-    <defs><linearGradient id="spf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="currentColor" stop-opacity=".22"/><stop offset="1" stop-color="currentColor" stop-opacity="0"/></linearGradient></defs>
-    ${p.length?`<polyline points="${line(p)}" fill="none" stroke="currentColor" stroke-opacity=".35" stroke-width="1.6" stroke-dasharray="3 4" vector-effect="non-scaling-stroke"/>`:''}
-    ${area?`<path d="${area}" fill="url(#spf)"/>`:''}
-    ${c.length?`<polyline points="${line(c)}" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>`:''}
-    ${last?`<circle cx="${last[0]}" cy="${last[1]}" r="3.5" fill="currentColor"/>`:''}
-  </svg>`;
+// Küçük çizgi grafik (widget)
+const miniSpark=(vals,w=58,h=22)=>{
+  if(!vals.length)return'';const max=Math.max(1,...vals);
+  const pts=vals.map((v,i)=>`${(i/(Math.max(1,vals.length-1))*w).toFixed(1)},${(h-2-v/max*(h-4)).toFixed(1)}`).join(' ');
+  return`<svg class="w-sp" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg>`;
 };
+// İnce dikey çubuklar: geçmiş günler gri, son gün siyah, gelecek günler soluk
+const barsSVG=(vals,activeIdx,{h=96,futureFrom=vals.length}={})=>{
+  const n=vals.length,W=320,gap=W/n,bw=Math.max(2,Math.min(gap*.42,9));const max=Math.max(1,...vals.slice(0,futureFrom));
+  const ink=cssVar('--ink')||'#141416',bar=cssVar('--bar')||'#CDCDD3',faint=cssVar('--surface-3')||'#E3E3E7';
+  return`<svg viewBox="0 0 ${W} ${h}" preserveAspectRatio="none" aria-hidden="true">${vals.map((v,i)=>{
+    const fut=i>=futureFrom;const bh=fut?3:Math.max(3,v/max*(h-6));const x=i*gap+(gap-bw)/2;
+    return`<rect x="${x.toFixed(1)}" y="${(h-bh).toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" rx="${Math.min(bw/2,2)}" fill="${i===activeIdx?ink:fut?faint:bar}"/>`;}).join('')}</svg>`;
+};
+const cssVar=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+const catTile=([k,v],total,color=getCat(k).c)=>`<div class="tile">
+  <span class="tl"><span class="dot" style="background:${color}"></span>${esc(k)}</span>
+  <div class="tile-r"><span class="tv num">${fmtSplit(v)}</span><span class="tp num">%${pct(v,total)}</span></div>
+  <div class="ln"><i style="width:${Math.max(2,pct(v,total))}%"></i></div></div>`;
+
+const nextDueCard=()=>cards.filter(c=>c.dueDay).map(c=>({c,dl:daysUntil(nextDue(c.dueDay))})).sort((a,b)=>a.dl-b.dl)[0]||null;
 
 const renderHome=()=>{
-  updateMLabels();renderAlerts('home-alrts');
-  const mt=mTxs(curKey());
-  const total=sumOf(mt);
-  const prevD=new Date(curMonth.getFullYear(),curMonth.getMonth()-1,1);
-  const pt=mTxs(keyOf(prevD));const pTotal=sumOf(pt);
-  const diff=pTotal>0?((total-pTotal)/pTotal*100):null;
-  const now=new Date();
-  const isCur=curMonth.getFullYear()===now.getFullYear()&&curMonth.getMonth()===now.getMonth();
-  const dim=new Date(curMonth.getFullYear(),curMonth.getMonth()+1,0).getDate();
-  const dimP=new Date(prevD.getFullYear(),prevD.getMonth()+1,0).getDate();
-  const dayIdx=isCur?now.getDate():dim;
-  const daily=(arr,n)=>{const a=new Array(n).fill(0);arr.forEach(t=>{const d=+String(t.date).slice(8,10);if(d>=1&&d<=n)a[d-1]+=t.amount;});return a;};
-  // Geçen ayın aynı gününe kadarki harcama ile karşılaştır (adil kıyas)
-  const pSame=sumOf(pt.filter(t=>+String(t.date).slice(8,10)<=dayIdx));
-  document.getElementById('home-hero').innerHTML=`
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-      <div class="hero-l">${esc(monthLabel(curMonth))} harcaması</div>
-      <div class="msel hmsel">
-        <button class="marr" onclick="chM(-1)" aria-label="Önceki ay"><svg class="i"><use href="#i-left"/></svg></button>
-        <button class="marr" onclick="chM(1)" aria-label="Sonraki ay"><svg class="i"><use href="#i-right"/></svg></button>
-      </div>
-    </div>
-    <div class="hero-v num">${fmtSplit(total)}</div>
-    <div class="hero-row">
-      ${diff!==null?`<span class="pill ${diff>0?'up':'dn'}">${diff>0?'↑':'↓'} %${Math.abs(diff).toFixed(0)}</span><span class="hero-sub">geçen aya göre (${fmt(pTotal)})</span>`:`<span class="hero-sub">Geçen ay kayıt yok</span>`}
-    </div>
-    ${sparkSVG(daily(mt,dim),daily(pt,dimP),dim,dimP,dayIdx)}
-    <div class="spark-leg"><span><i></i>Bu ay</span><span><i class="prev"></i>Geçen ay${isCur&&pTotal?` · aynı günde ${fmt(pSame)}`:''}</span></div>`;
+  updateMLabels();renderAlerts('home-alrts',true);
+  const st=monthStats();
+  document.getElementById('hello-s').textContent=st.isCur?`${monthName(curMonth).replace(/^./,c=>c.toLocaleUpperCase('tr-TR'))} harcamaların burada.`:`${monthLabel(curMonth)} özeti`;
+  document.getElementById('home-hero').innerHTML=`<div class="glow"></div>
+    <div class="sum-l">${st.isCur?'Bu ay harcadın':esc(monthLabel(curMonth))+' harcaması'}</div>
+    <div class="big num">${fmtSplit(st.total)}</div>
+    <div class="sum-s">${cmpText(st)}</div>
+    <div class="trio">
+      <div><span>${esc(monthName(st.prevD).replace(/^./,c=>c.toLocaleUpperCase('tr-TR')))}</span><b class="num">${fmt0(st.pTotal)}</b></div>
+      <div><span>İşlem</span><b class="num">${st.mt.length}</b></div>
+      <div><span>Günlük ortalama</span><b class="num">${fmt0(st.days?st.total/st.days:0)}</b></div>
+    </div>`;
 
-  const catT={};mt.forEach(t=>catT[t.category]=(catT[t.category]||0)+t.amount);
-  const catE=Object.entries(catT).sort((a,b)=>b[1]-a[1]);
-  const avg=dayIdx?total/dayIdx:0;
-  document.getElementById('home-mets').innerHTML=`
-    <div class="met"><div class="met-ic"><svg class="i"><use href="#i-cal"/></svg></div><div class="ml">Günlük ortalama</div><div class="mv num">${fmt(avg)}</div><div class="mc">${mt.length} işlem</div></div>
-    <div class="met"><div class="met-ic" style="background:${catE[0]?getCat(catE[0][0]).c+'1f':'var(--accent-soft)'};color:${catE[0]?getCat(catE[0][0]).c:'var(--accent)'}"><svg class="i"><use href="#i-pie"/></svg></div><div class="ml">En çok harcanan</div><div class="mv">${catE[0]?esc(catE[0][0]):'—'}</div><div class="mc">${catE[0]?`${fmt(catE[0][1])} · %${pct(catE[0][1],total)}`:'bu ay kayıt yok'}</div></div>`;
+  // Öne çıkan iki satır: en çok harcanan kategori ve sıradaki ödeme (pastel vurgu yalnızca burada)
+  const nd=nextDueCard();const tiles=[];
+  if(st.catE[0]){const [k,v]=st.catE[0];tiles.push(`<div class="tile">
+    <div class="tile-r"><span class="tl">En çok harcanan · ${esc(k)}</span><span class="tp num">%${pct(v,st.total)}</span></div>
+    <div class="tile-r"><span class="tv num">${fmtSplit(v)}</span></div><div class="ln"><i style="width:${pct(v,st.total)}%"></i></div></div>`);}
+  if(nd){const dd=nextDue(nd.c.dueDay);tiles.push(`<div class="tile hl" onclick="goTab('cards')" style="cursor:pointer">
+    <div class="tile-r"><span class="tl"><span class="dot" style="background:${nd.c.color}"></span>Sıradaki son ödeme · ${esc(nd.c.name)}</span><span class="tp">${nd.dl===0?'bugün':nd.dl+' gün'}</span></div>
+    <div class="tile-r"><span class="tv">${dd.toLocaleDateString('tr-TR',{day:'numeric',month:'long'})}</span><span class="tgo"><svg class="i"><use href="#i-right"/></svg></span></div></div>`);}
+  document.getElementById('home-mets').innerHTML=tiles.join('');
 
-  const catsEl=document.getElementById('home-cats');
-  document.getElementById('home-cats-sec').hidden=!catE.length;
-  catsEl.innerHTML=catE.slice(0,4).map(([k,v])=>{const c=getCat(k);return`
-    <div class="catr">
-      <div class="ico sm" style="background:${c.c}1f;color:${c.c}">${c.n.charAt(0)}</div>
-      <div><div class="catr-n">${esc(k)}</div><div class="bar"><i style="width:${Math.max(3,pct(v,catE[0][1]))}%;background:${c.c}"></i></div></div>
-      <div><div class="catr-v num">${fmt(v)}</div><div class="catr-s" style="text-align:right">%${pct(v,total)}</div></div>
-    </div>`;}).join('');
+  document.getElementById('home-cats-sec').hidden=st.catE.length<2;
+  document.getElementById('home-cats').innerHTML=st.catE.slice(1,4).map(e=>catTile(e,st.total)).join('');
 
-  const ct={};mt.forEach(t=>ct[t.cardId]=(ct[t.cardId]||0)+t.amount);
-  const sorted=[...cards].sort((a,b)=>(ct[b.id]||0)-(ct[a.id]||0));
-  document.getElementById('home-ccar').innerHTML=sorted.map(c=>`
-    <div class="ccard bcard" style="--cc:${c.color}" onclick="goTab('cards')">
-      <div class="bc-top"><div><div class="bc-nm">${esc(c.name)}</div><div class="bc-tp">${esc(c.type)}${c.dueDay?` · son ödeme ${c.dueDay}.`:''}</div></div><div class="bc-chip"></div></div>
-      <div><div class="bc-amt num">${fmt(ct[c.id]||0)}</div><div class="bc-sub">bu ay harcama</div></div>
-    </div>`).join('');
+  const ct={};st.mt.forEach(t=>ct[t.cardId]=(ct[t.cardId]||0)+t.amount);
+  const sorted=[...cards].sort((a,b)=>(ct[b.id]||0)-(ct[a.id]||0)).slice(0,3);
+  document.getElementById('home-ccar').innerHTML=sorted.map(c=>{const sp=ct[c.id]||0;return`<div class="tile" onclick="goTab('cards')" style="cursor:pointer">
+    <div class="tile-r"><span class="tl"><span class="dot" style="background:${c.color}"></span>${esc(c.name)}${c.limit?` · limit ${fmt0(c.limit)}`:''}</span><span class="tp num">${c.limit?'%'+pct(sp,c.limit):''}</span></div>
+    <div class="tile-r"><span class="tv num">${fmtSplit(sp)}</span><span class="tgo"><svg class="i"><use href="#i-right"/></svg></span></div>
+    ${c.limit?`<div class="ln"><i style="width:${Math.min(100,pct(sp,c.limit))}%"></i></div>`:''}</div>`;}).join('');
 
-  const recent=[...mt].sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,6);
+  const recent=[...st.mt].sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,5);
   document.getElementById('home-txs').innerHTML=recent.length?recent.map(t=>txItemHTML(t)).join(''):`<div class="emp"><svg class="i"><use href="#i-empty"/></svg>Bu ay için işlem yok.<br>İlk harcamanı eklemek için + düğmesine dokun.</div>`;
 };
 
@@ -575,9 +587,9 @@ const dayTitle=k=>{
 };
 const renderTxs=()=>{
   const cc=document.getElementById('s-crd-chips');
-  if(!cc.dataset.b){cc.innerHTML='<div class="ch on" data-cid="" onclick="window.setCrdF(this,\'\')">Tümü</div>'+cards.map(c=>`<div class="ch" data-cid="${c.id}" onclick="window.setCrdF(this,'${c.id}')">${esc(c.name)}</div>`).join('');cc.dataset.b='1';}
+  if(!cc.dataset.b){cc.innerHTML='<div class="ch on" data-cid="" onclick="window.setCrdF(this,\'\')">Tüm kartlar</div>'+cards.map(c=>`<div class="ch" data-cid="${c.id}" onclick="window.setCrdF(this,'${c.id}')">${esc(c.name)}</div>`).join('');cc.dataset.b='1';}
   const catc=document.getElementById('s-cat-chips');
-  if(!catc.dataset.b){catc.innerHTML='<div class="ch on" data-cat="" onclick="window.setCatF(this,\'\')">Tümü</div>'+CATS.map(c=>`<div class="ch" data-cat="${c.n}" onclick="window.setCatF(this,'${c.n}')">${c.n}</div>`).join('');catc.dataset.b='1';}
+  if(!catc.dataset.b){catc.innerHTML='<div class="ch on" data-cat="" onclick="window.setCatF(this,\'\')">Tüm kategoriler</div>'+CATS.map(c=>`<div class="ch" data-cat="${c.n}" onclick="window.setCatF(this,'${c.n}')">${c.n}</div>`).join('');catc.dataset.b='1';}
   const q=document.getElementById('s-q').value.toLowerCase();
   const mo=document.getElementById('s-mo').value;
   let f=[...txs];
@@ -586,6 +598,8 @@ const renderTxs=()=>{
   if(sCat)f=f.filter(t=>t.category===sCat);
   if(mo)f=f.filter(t=>mKey(t.date)===mo);
   f.sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  const scope=mo?new Date(mo+'-01T00:00').toLocaleDateString('tr-TR',{month:'long',year:'numeric'}):'Tüm zamanlar';
+  document.getElementById('txs-sum').innerHTML=`<div class="sum-l">${esc(scope)}${q||sCrd||sCat?' · filtreli':''}</div><div class="big md num">${fmtSplit(sumOf(f))}</div><div class="sum-s">${f.length} işlem</div>`;
   if(!f.length){document.getElementById('txs-wrap').innerHTML=`<div class="emp"><svg class="i"><use href="#i-search"/></svg>İşlem bulunamadı</div>`;return;}
   const groups=[];let g=null;
   for(const t of f){if(!g||g.k!==t.date){g={k:t.date,items:[]};groups.push(g);}g.items.push(t);}
@@ -602,16 +616,21 @@ window.delTx=async id=>{if(!confirm('Bu işlemi silmek istiyor musun?'))return;a
 
 const renderCards=()=>{
   updateMLabels();renderAlerts('cards-alrts');
-  const mt=mTxs(curKey());const ct={};mt.forEach(t=>ct[t.cardId]=(ct[t.cardId]||0)+t.amount);
+  const st=monthStats();const ct={};st.mt.forEach(t=>ct[t.cardId]=(ct[t.cardId]||0)+t.amount);
+  const used=cards.filter(c=>ct[c.id]>0).length;
+  document.getElementById('cards-sum').innerHTML=`<div class="sum-l">Kartlarla harcanan · ${esc(monthLabel(curMonth))}</div><div class="big md num">${fmtSplit(st.total)}</div><div class="sum-s">${cards.length} kart · ${used} kart kullanıldı</div>`;
   const today=new Date();today.setHours(0,0,0,0);
+  const nd=nextDueCard();
   const items=cards.map(c=>{
-    const spend=ct[c.id]||0;const tags=[];
-    if(c.statementDay){let sd=new Date(today.getFullYear(),today.getMonth(),c.statementDay);if(sd<=today)sd=new Date(today.getFullYear(),today.getMonth()+1,c.statementDay);const dys=Math.ceil((sd-today)/864e5);tags.push(`<span class="bc-tag">Ekstre ${c.statementDay}. · ${dys===0?'bugün':dys+' gün'}</span>`);}
-    if(c.dueDay){const dl=daysUntil(nextDue(c.dueDay));tags.push(`<span class="bc-tag ${dl<=1?'u':dl<=3?'w':''}">Son ödeme ${c.dueDay}. · ${dl===0?'bugün':dl+' gün'}</span>`);}
-    const lim=c.limit?`<div class="bc-sub" style="margin-top:6px">Limit ${fmt(c.limit)} · %${pct(spend,c.limit)} kullanıldı</div><div class="bc-lim"><i style="width:${Math.min(100,pct(spend,c.limit))}%"></i></div>`:'';
-    return`<div class="cgi bcard" style="--cc:${c.color}" onclick="window.openCardEdit('${c.id}')">
-      <div class="bc-top"><div><div class="bc-nm">${esc(c.name)}</div><div class="bc-tp">${esc(c.type)} kartı</div></div><div class="bc-chip"></div></div>
-      <div><div class="bc-sub">${esc(monthLabel(curMonth))} harcaması</div><div class="bc-amt num">${fmt(spend)}</div>${lim}${tags.length?`<div class="bc-meta">${tags.join('')}</div>`:''}</div>
+    const spend=ct[c.id]||0;const meta=[];
+    if(c.statementDay){let sd=new Date(today.getFullYear(),today.getMonth(),c.statementDay);if(sd<=today)sd=new Date(today.getFullYear(),today.getMonth()+1,c.statementDay);const dys=Math.ceil((sd-today)/864e5);meta.push(`Ekstre ${c.statementDay}. gün (${dys===0?'bugün':dys+' gün'})`);}
+    if(c.dueDay){const dl=daysUntil(nextDue(c.dueDay));meta.push(`Son ödeme ${c.dueDay}. gün (${dl===0?'bugün':dl+' gün'})`);}
+    const hl=nd&&nd.c.id===c.id&&nd.dl<=7;
+    return`<div class="cgi tile${hl?' hl':''}" onclick="window.openCardEdit('${c.id}')">
+      <div class="tile-r"><span class="tl"><span class="dot" style="background:${c.color}"></span>${esc(c.name)} · ${esc(c.type)}</span><span class="tp num">${c.limit?`%${pct(spend,c.limit)} · limit ${fmt0(c.limit)}`:'limit yok'}</span></div>
+      <div class="tile-r"><span class="tv num">${fmtSplit(spend)}</span><span class="tgo"><svg class="i"><use href="#i-right"/></svg></span></div>
+      ${c.limit?`<div class="ln"><i style="width:${Math.min(100,pct(spend,c.limit))}%"></i></div>`:''}
+      ${meta.length?`<div class="tf">${meta.join(' · ')}</div>`:''}
     </div>`;
   }).join('');
   document.getElementById('card-grid').innerHTML=items+`<div class="add-crd" onclick="window.openCardAdd()"><svg class="i"><use href="#i-plus"/></svg>Yeni kart ekle</div>`;
@@ -661,7 +680,20 @@ const setField=(id,val)=>{if(!touched.has(id))$(id).value=val;};
 
 window.onFormEdit=e=>{
   if(e.target?.id)touched.add(e.target.id);
-  hideReview();
+  hideReview();updatePreview();
+};
+
+// Canlı tutar önizlemesi ve kart seçici (yalnızca görünüm; değerler formdaki alanlardan okunur)
+const updatePreview=()=>{
+  const a=parseFloat($('f-amt').value);const el=$('amt-v');
+  el.innerHTML=a>0?fmtSplit(a):`₺0<span class="dec">,00</span>`;el.classList.toggle('empty',!(a>0));
+  const d=$('f-desc').value.trim();const c=getCard($('f-crd').value);
+  $('amt-s').textContent=d?[d,$('f-cat').value,c.name!=='?'?c.name:''].filter(Boolean).join(' · '):'Tutarı hızlı girişe veya aşağıya yaz';
+  document.querySelectorAll('#crd-picks .pick').forEach(p=>p.classList.toggle('on',p.dataset.id===$('f-crd').value));
+};
+const renderPicks=()=>{
+  $('crd-picks').innerHTML=cards.map(c=>`<button class="pick" data-id="${c.id}" style="--cc:${c.color}"><span class="pick-c">${esc(initials(c.name,2))}</span><span class="pick-n">${esc(c.name)}</span></button>`).join('');
+  $('crd-picks').querySelectorAll('.pick').forEach(b=>b.onclick=()=>{$('f-crd').value=b.dataset.id;touched.add('f-crd');hideReview();updatePreview();});
 };
 
 const renderQuickSugs=()=>{
@@ -692,6 +724,7 @@ window.onQuick=()=>{
   if(r.dayOffset)tags.push(`<span class="qk-tag ok">${r.dayOffset===-1?'Dün':'Önceki gün'}</span>`);
   hint.innerHTML=tags.join('');
 };
+{const _onQuick=window.onQuick;window.onQuick=()=>{_onQuick();updatePreview();};}
 
 const readForm=()=>({
   date:$('f-date').value,
@@ -715,7 +748,7 @@ window.openAddTx=()=>{
   const dc=defaultCardId();if(dc)$('f-crd').value=dc;
   $('addtx-fb').textContent='';
   hideReview();
-  renderQuickSugs();
+  renderQuickSugs();renderPicks();updatePreview();
   $('addtx-ovl').classList.add('on');
   // iPhone klavyeyi yalnızca dokunma olayı içinde odaklanınca açar
   q.focus();
@@ -729,7 +762,7 @@ window.reviewTx=()=>{
   fb.textContent='';
   const card=getCard(t.cardId);
   $('cfm-desc').textContent=t.description;
-  $('cfm-amt').textContent=fmt(t.amount);
+  $('cfm-amt').innerHTML=fmtSplit(t.amount);
   $('cfm-meta').textContent=`${t.category} · ${card.name} · ${new Date(t.date+'T00:00').toLocaleDateString('tr-TR')}`;
   $('addtx-next').style.display='none';
   $('addtx-cfm').style.display='';
@@ -771,46 +804,40 @@ const rebuildSelects=()=>{
   const cc=document.getElementById('s-crd-chips');if(cc){cc.dataset.b='';cc.innerHTML='';}
 };
 
-const cssVar=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const renderTrend=()=>{
   updateMLabels();
-  const ink2=cssVar('--ink-3')||'#A29EA7',line=cssVar('--line')||'rgba(0,0,0,.07)',muted=cssVar('--surface-3')||'#E7E3DF';
-  const months=[];for(let i=5;i>=0;i--){const d=new Date(curMonth.getFullYear(),curMonth.getMonth()-i,1);months.push({key:keyOf(d),label:d.toLocaleDateString('tr-TR',{month:'short'})});}
-  const totals=months.map(m=>+sumOf(mTxs(m.key)).toFixed(2));
-  const mt=mTxs(curKey());const total=sumOf(mt);
-  const prevD=new Date(curMonth.getFullYear(),curMonth.getMonth()-1,1);const pTotal=sumOf(mTxs(keyOf(prevD)));
-  const diff=pTotal>0?((total-pTotal)/pTotal*100):null;
-  const now=new Date();const isCur=curMonth.getFullYear()===now.getFullYear()&&curMonth.getMonth()===now.getMonth();
-  const days=isCur?now.getDate():new Date(curMonth.getFullYear(),curMonth.getMonth()+1,0).getDate();
-  const avg6=totals.slice(0,5).filter(v=>v>0);const avgPrev=avg6.length?avg6.reduce((a,b)=>a+b,0)/avg6.length:0;
+  const st=monthStats();
+  document.getElementById('an-sum').innerHTML=`<div class="sum-l">${st.isCur?'Bu ay harcadın':esc(monthLabel(curMonth))+' harcaması'}</div><div class="big md num">${fmtSplit(st.total)}</div><div class="sum-s">${cmpText(st)}</div>`;
+  // Günlük birikimli harcama: her çubuk o güne kadarki toplam
+  const cum=[];let s=0;for(let i=0;i<st.dim;i++){s+=st.daily[i];cum.push(s);}
+  const m=monthName(curMonth).slice(0,3);
+  document.getElementById('an-bars').innerHTML=`<div class="dbars-cap">günlük birikimli</div>${barsSVG(cum,st.days-1,{futureFrom:st.days})}
+    <div class="dbars-x"><span>1 ${esc(m)}</span><span>${Math.ceil(st.dim/2)} ${esc(m)}</span><span>${st.isCur?'Bugün':st.dim+' '+esc(m)}</span></div>`;
+
+  document.getElementById('cat-sum').textContent=st.catE.length?`${st.catE.length} kategori`:'';
+  document.getElementById('cat-leg').innerHTML=st.catE.length?st.catE.map(e=>catTile(e,st.total)).join(''):`<div class="tile"><span class="tf">Bu ay kayıt yok</span></div>`;
+
+  const months=[];for(let i=5;i>=0;i--){const d=new Date(curMonth.getFullYear(),curMonth.getMonth()-i,1);months.push({d,v:sumOf(mTxs(keyOf(d)))});}
+  const prev5=months.slice(0,5).map(x=>x.v).filter(v=>v>0);const avg5=prev5.length?prev5.reduce((a,b)=>a+b,0)/prev5.length:0;
+  const diff=st.pSame?((st.total-st.pSame)/st.pSame*100):null;
+  const dotsN=Math.min(18,st.mt.length);
   document.getElementById('an-cmp').innerHTML=`
-    <div class="met"><div class="ml">Bu ay</div><div class="mv num">${fmt(total)}</div><div class="mc">${mt.length} işlem</div></div>
-    <div class="met"><div class="ml">Geçen ay</div><div class="mv num">${fmt(pTotal)}</div><div class="mc" style="color:${diff===null?'':diff>0?'var(--neg)':'var(--pos)'}">${diff===null?'karşılaştırma yok':(diff>0?'↑ %':'↓ %')+Math.abs(diff).toFixed(0)+' fark'}</div></div>
-    <div class="met"><div class="ml">Günlük ortalama</div><div class="mv num">${fmt(days?total/days:0)}</div><div class="mc">${days} gün</div></div>
-    <div class="met"><div class="ml">5 ay ortalaması</div><div class="mv num">${fmt(avgPrev)}</div><div class="mc">${avgPrev?(total>avgPrev?'bu ay üzerinde':'bu ay altında'):'yeterli veri yok'}</div></div>`;
+    <div class="wd"><div class="w-h"><svg class="i"><use href="#i-cal"/></svg><div class="w-l">Günlük<br>ortalama</div></div>
+      <div class="w-b"><div class="w-v num">${fmt0(st.days?st.total/st.days:0)}</div>${miniSpark(st.daily.slice(0,st.days))}</div></div>
+    <div class="wd hl"><div class="w-h"><svg class="i"><use href="#i-chart"/></svg><div class="w-l">${st.isCur?'Geçen ayın aynı<br>dönemine göre':'Geçen aya<br>göre'}</div></div>
+      <div class="w-b"><div class="w-v num">${diff===null?'—':(diff>0?'+':'−')+Math.abs(diff).toFixed(0)}<small>${diff===null?'':'%'}</small></div>${miniSpark(months.map(x=>x.v))}</div></div>
+    <div class="wd"><div class="w-h"><svg class="i"><use href="#i-list"/></svg><div class="w-l">İşlem<br>sayısı</div></div>
+      <div class="w-b"><div class="w-v num">${st.mt.length}</div><div class="dots">${Array.from({length:18},(_,i)=>`<i class="${i<dotsN?'':'off'}"></i>`).join('')}</div></div></div>
+    <div class="wd"><div class="w-h"><svg class="i"><use href="#i-pie"/></svg><div class="w-l">5 ay<br>ortalaması</div></div>
+      <div class="w-b"><div class="w-v num">${fmt0(avg5)}</div><div class="tf">${avg5?(st.total>avg5?'bu ay üstünde':'bu ay altında'):''}</div></div></div>`;
 
-  if(chts.t1)chts.t1.destroy();
-  const c1=document.getElementById('tc1');
-  const g=c1.getContext('2d').createLinearGradient(0,0,0,180);g.addColorStop(0,'#FF86AC');g.addColorStop(1,'#9F84FF');
-  chts.t1=new Chart(c1,{type:'bar',data:{labels:months.map(m=>m.label),datasets:[{data:totals,backgroundColor:totals.map((_,i)=>i===5?g:muted),borderRadius:10,borderSkipped:false,barPercentage:.62,categoryPercentage:.9}]},
-    options:{responsive:true,maintainAspectRatio:false,animation:{duration:400},plugins:{legend:{display:false},tooltip:{displayColors:false,callbacks:{label:ctx=>` ${fmt(ctx.raw)}`}}},
-      scales:{x:{grid:{display:false},border:{display:false},ticks:{font:{size:11,weight:'600'},color:ink2}},y:{grid:{color:line},border:{display:false},ticks:{font:{size:10},color:ink2,maxTicksLimit:4,callback:v=>v>=1000?'₺'+(v/1000).toLocaleString('tr-TR')+'b':'₺'+v}}}}});
+  const ct={};st.mt.forEach(t=>ct[t.cardId]=(ct[t.cardId]||0)+t.amount);
+  const crdE=cards.filter(c=>ct[c.id]>0).sort((a,b)=>ct[b.id]-ct[a.id]);
+  document.getElementById('crd-bars').innerHTML=crdE.length?crdE.map(c=>catTile([c.name,ct[c.id]],st.total,c.color)).join(''):`<div class="tile"><span class="tf">Bu ay kart harcaması yok</span></div>`;
 
-  const catT={};mt.forEach(t=>catT[t.category]=(catT[t.category]||0)+t.amount);
-  const catE=Object.entries(catT).sort((a,b)=>b[1]-a[1]);
-  if(chts.t2)chts.t2.destroy();
-  document.getElementById('cat-sum').textContent=catE.length?`${catE.length} kategori`:'';
-  document.getElementById('donut-c').innerHTML=catE.length?`<b class="num">${fmt(total)}</b><span>toplam</span>`:`<span>Bu ay kayıt yok</span>`;
-  document.getElementById('cat-leg').innerHTML=catE.map(([k,v])=>`<div class="li"><span class="ld" style="background:${getCat(k).c}"></span><span class="ln">${esc(k)}</span><span class="lp num">%${pct(v,total)}</span></div>`).join('');
-  if(catE.length)chts.t2=new Chart(document.getElementById('tc2'),{type:'doughnut',data:{labels:catE.map(([k])=>k),datasets:[{data:catE.map(([,v])=>+v.toFixed(2)),backgroundColor:catE.map(([k])=>getCat(k).c),borderWidth:0,spacing:2,borderRadius:4}]},
-    options:{responsive:true,maintainAspectRatio:false,cutout:'74%',plugins:{legend:{display:false},tooltip:{displayColors:false,callbacks:{label:ctx=>` ${ctx.label}: ${fmt(ctx.raw)}`}}}}});
-
-  const crdT={};mt.forEach(t=>crdT[t.cardId]=(crdT[t.cardId]||0)+t.amount);
-  const crdE=cards.filter(c=>crdT[c.id]>0).sort((a,b)=>crdT[b.id]-crdT[a.id]);
-  const top=crdE.length?crdT[crdE[0].id]:1;
-  document.getElementById('crd-bars').innerHTML=crdE.length?crdE.map(c=>`
-    <div><div class="hb-top"><span>${esc(c.name)}</span><span class="num">${fmt(crdT[c.id])} · %${pct(crdT[c.id],total)}</span></div>
-    <div class="bar" style="height:8px"><i style="width:${Math.max(3,pct(crdT[c.id],top))}%;background:${c.color}"></i></div></div>`).join(''):`<div class="emp" style="padding:16px">Bu ay kart harcaması yok</div>`;
+  document.getElementById('an-6m').innerHTML=`${barsSVG(months.map(x=>x.v),5,{h:80})}
+    <div class="dbars-x">${months.map((x,i)=>`<span style="${i===5?'color:var(--ink);font-weight:600':''}">${x.d.toLocaleDateString('tr-TR',{month:'short'})}</span>`).join('')}</div>
+    <div class="dbars-x"><span>${fmt0(months[0].v)}</span><span>ortalama ${fmt0(avg5)}</span><span>${fmt0(st.total)}</span></div>`;
 };
 
 window.doImport=async()=>{
@@ -913,6 +940,5 @@ window.restoreBackup=async input=>{
 document.getElementById('s-mo').value=localDate().slice(0,7);
 updateMLabels();
 </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 </body>
 </html>
