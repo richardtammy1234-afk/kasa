@@ -418,3 +418,6 @@ svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stro
 .co{width:30px;height:30px;border-radius:50%;cursor:pointer;}
 .co.s{box-shadow:0 0 0 3px var(--bg),0 0 0 4.5px var(--ink);}
 .loading{padding:48px;text-align:center;color:var(--ink-3);font-size:14px;}
+
+/* hızlı ekleme bağlantısıyla gelindiğinde giriş ekranındaki not */
+.login-note.login-quick{color:var(--ink);background:var(--surface);padding:8px 14px;border-radius:999px;max-width:320px;}

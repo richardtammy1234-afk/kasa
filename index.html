@@ -10,7 +10,10 @@
 <meta name="theme-color" content="#EEEEF0" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0D0D0F" media="(prefers-color-scheme: dark)">
 <title>Kasa — Harcama Takibi</title>
-<link rel="stylesheet" href="styles.css?v=7">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="stylesheet" href="styles.css?v=8">
 </head>
 <body>
 
@@ -49,6 +52,7 @@
     <span class="g"><svg width="14" height="14" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.2l7.9 6.1C12.5 13.5 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17.1z"/><path fill="#FBBC05" d="M10.6 28.7c-.5-1.4-.8-3-.8-4.7s.3-3.2.8-4.7l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.8z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.7c-2.1 1.4-4.8 2.2-8.5 2.2-6.2 0-11.5-4-13.4-9.6l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg></span>
     Google ile devam et
   </button>
+  <div class="login-note login-quick" id="login-quick" hidden>Giriş yaptıktan sonra harcama ekleme ekranı açılacak.</div>
   <div class="login-note">Veriler yalnızca senin Google hesabına bağlıdır. Başkası göremez.</div>
 </div>
 
@@ -322,7 +326,26 @@ import * as A from './analytics.js?v=1';
 
 // Hızlı giriş modülü ayrı yüklenir: dosya alınamazsa (ağ/önbellek) giriş, liste ve normal işlem ekleme yine çalışır.
 let QP=null;
-import('./quick-parse.js?v=2').then(m=>{QP=m;}).catch(e=>{console.warn('Hızlı giriş yüklenemedi',e);});
+const qpReady=import('./quick-parse.js?v=2').then(m=>{QP=m;}).catch(e=>{console.warn('Hızlı giriş yüklenemedi',e);});
+
+// --- Hızlı ekleme bağlantısı (iPhone Kestirmeler / Ana Ekran) ---
+// Biçim: …/kasa/#ekle  veya  …/kasa/#ekle=Migros%20450%20%C4%B0%C5%9F%20Gen%C3%A7
+// - Metin URL'nin # (fragment) kısmında taşınır: tarayıcı bunu sunucuya, GitHub Pages kayıtlarına veya
+//   Referer başlığına göndermez. Okunur okunmaz adres çubuğundan ve geçmişten silinir (Google girişine de gitmez).
+// - Bağlantı ASLA kayıt yapmaz: yalnızca "İşlem ekle" ekranını açıp alanları doldurur; kayıt için mevcut onay gerekir.
+// - Giriş gerekiyorsa metin yalnızca bellekte bekler; giriş tamamlanınca ekran açılır.
+const QUICK_MAX=120;
+const readQuickLink=()=>{
+  const m=/^#ekle(?:=([\s\S]*))?$/.exec(location.hash||'');
+  if(!m)return null;
+  try{history.replaceState(null,'',location.pathname+location.search);}catch{}
+  let text='',bad=false;
+  if(m[1]!=null){try{text=decodeURIComponent(m[1].replace(/\+/g,' '));}catch{bad=true;}}
+  // Kontrol ve yön değiştiren görünmez karakterler atılır; uzunluk sınırlanır
+  text=text.replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]/g,' ').replace(/\s+/g,' ').trim().slice(0,QUICK_MAX).trim();
+  return{text,bad};
+};
+let pendingQuick=readQuickLink();
 // Yerel saatle YYYY-MM-DD (toISOString UTC'dir; Türkiye'de 00:00-03:00 arası önceki günü verir)
 const localDate=(d=new Date(),offsetDays=0)=>{const x=new Date(d.getFullYear(),d.getMonth(),d.getDate()+offsetDays);return`${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`;};
 
@@ -420,6 +443,7 @@ const subscribeData=()=>{
     }
     cardsLoaded=true;
     rebuildSelects();
+    openPendingQuick();
     const av=document.querySelector('.v.on')?.id;
     if(av==='v-home')renderHome();
     if(av==='v-cards')renderCards();
@@ -463,6 +487,7 @@ onAuthStateChanged(auth,user=>{
     updateMLabels();
     subscribeData();
   } else {
+    document.getElementById('login-quick').hidden=!pendingQuick;
     document.getElementById('login-screen').classList.remove('hidden');
     document.getElementById('app').style.display='none';
   }
@@ -947,6 +972,18 @@ window.openAddTx=()=>{
   // iPhone klavyeyi yalnızca dokunma olayı içinde odaklanınca açar
   q.focus();
 };
+
+// Bekleyen hızlı ekleme bağlantısı: giriş yapılmış ve kartlar yüklenmişse ekranı açar (kaydetmez)
+async function openPendingQuick(){
+  if(!pendingQuick||!currentUser||!cardsLoaded)return;
+  const p=pendingQuick;pendingQuick=null;
+  await qpReady;
+  if(document.querySelector('.v.on')?.id!=='v-home')goTab('home');
+  window.openAddTx();
+  if(p.bad){$('q-hint').innerHTML='<span class="qk-tag wr">Bağlantıdaki metin okunamadı — harcamayı buraya yaz</span>';return;}
+  if(p.text){const q=$('q-in');q.value=p.text;window.onQuick();try{q.setSelectionRange(q.value.length,q.value.length);}catch{}}
+}
+window.addEventListener('hashchange',()=>{const p=readQuickLink();if(p){pendingQuick=p;openPendingQuick();}});
 
 // 1. adım: özet göster, kaydetmeden önce onay iste
 window.reviewTx=()=>{

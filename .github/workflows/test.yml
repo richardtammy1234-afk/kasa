@@ -16,7 +16,8 @@ jobs:
       - run: npm ci
       - name: Birim testleri
         run: npm test
-      - run: npx playwright install --with-deps chromium
+      # WebKit: hızlı ekleme bağlantısı testleri Safari motorunda da çalışır
+      - run: npx playwright install --with-deps chromium webkit
       - name: Tarayıcı testi (sahte Firebase)
         run: npm run test:e2e
       - uses: actions/setup-java@v4
