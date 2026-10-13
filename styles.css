@@ -260,6 +260,17 @@ svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stro
 /* geri al bildirimi (alt menünün üstünde) */
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--safe-bot) + 84px);z-index:60;width:calc(100% - 32px);max-width:448px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 12px 12px 18px;border-radius:999px;background:var(--ink);color:var(--bg);font-size:14px;box-shadow:var(--sh-2);animation:foi .2s ease;}
 .toast[hidden]{display:none;}
+.toast{overflow:hidden;}
+.toast button[hidden]{display:none;}
+.toast.ok{background:var(--surface);color:var(--ink);box-shadow:0 0 0 1px var(--line-2),var(--sh-2);}
+.toast.wait{background:var(--warn-bg);color:var(--warn);}
+.toast.er{background:var(--neg-bg);color:var(--neg);}
+.toast.ok,.toast.wait,.toast.er{border-radius:20px;padding:13px 18px;}
+.toast.ok span,.toast.wait span,.toast.er span{white-space:normal;}
+.toast-bar{position:absolute;left:0;bottom:0;height:3px;width:100%;background:color-mix(in srgb,var(--bg) 45%,transparent);transform-origin:left;}
+.toast-bar[hidden]{display:none;}
+@keyframes tbar{from{transform:scaleX(1);}to{transform:scaleX(0);}}
+.btnd:disabled{opacity:.55;}
 .toast span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .toast button{flex-shrink:0;padding:8px 14px;border-radius:999px;background:color-mix(in srgb,var(--bg) 16%,transparent);color:var(--bg);font-size:13px;font-weight:600;}
 

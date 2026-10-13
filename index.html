@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#EEEEF0" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0D0D0F" media="(prefers-color-scheme: dark)">
 <title>Kasa — Harcama Takibi</title>
-<link rel="stylesheet" href="styles.css?v=5">
+<link rel="stylesheet" href="styles.css?v=6">
 </head>
 <body>
 
@@ -263,7 +263,7 @@
   </div>
 </div>
 
-<div class="toast" id="toast" role="status" aria-live="polite" hidden><span id="toast-t"></span><button id="toast-undo" onclick="window.undoDel()">Geri al</button></div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden><span id="toast-t"></span><button id="toast-undo" onclick="window.undoDel()">Geri al</button><i class="toast-bar" id="toast-bar" hidden></i></div>
 
 <!-- İŞLEM EKLE SAYFASI -->
 <div class="ovl" id="addtx-ovl" onclick="closeOvl('addtx-ovl',event)">
@@ -361,8 +361,8 @@ const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,5);
 const mKey=d=>{const dt=new Date(d);return`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`;};
 const curKey=()=>`${curMonth.getFullYear()}-${String(curMonth.getMonth()+1).padStart(2,'0')}`;
 // Silinmesi bekleyen (geri alınabilir) işlemler ekranlarda gösterilmez; yedek ve geri yükleme ham listeyi kullanır
-const pendDel=new Map();
-const shownTxs=()=>pendDel.size?txs.filter(t=>!pendDel.has(t.id)):txs;
+const pendDel=new Map(),sentDel=new Set();
+const shownTxs=()=>pendDel.size||sentDel.size?txs.filter(t=>!pendDel.has(t.id)&&!sentDel.has(t.id)):txs;
 const mTxs=k=>shownTxs().filter(t=>mKey(t.date)===k);
 // Bugünden sonraki tarihli işlemler (yalnızca etiket; veri ve hesaplama değişmez)
 const isPlanned=t=>String(t.date)>localDate();
@@ -421,7 +421,7 @@ const subscribeData=()=>{
   });
   unsubTxs=onSnapshot(userRef('txs'),snap=>{
     txs=snap.docs.map(d=>d.data());
-    if(!snap.metadata?.fromCache)txsLoaded=true;
+    if(!snap.metadata?.fromCache){txsLoaded=true;checkStaleDeletes();}
     if(!snap.metadata?.hasPendingWrites)setSyncStatus('Senkronize ✓');
     const av=document.querySelector('.v.on')?.id;
     if(av==='v-home')renderHome();
@@ -435,9 +435,9 @@ window.signIn=async()=>{
   catch(e){alert('Giriş yapılamadı: '+e.message);}
 };
 window.signOut=async()=>{
-  if(!confirm('Çıkış yapmak istiyor musun?'))return;
+  if(!confirm('Çıkış yapmak istiyor musun?'+(pendDel.size?'\n\nGeri alma süresi dolmamış silme iptal edilecek; kayıt silinmeyecek.':'')))return;
   if(unsubTxs)unsubTxs();if(unsubCards)unsubCards();
-  flushDel();
+  cancelPending();staleChecked=false;
   txs=[];cards=[];
   await fbSignOut(auth);
 };
@@ -679,7 +679,7 @@ const UNDO_MS=6000;
 let openTxId=null,toastT=null;
 const rerender=()=>{const av=document.querySelector('.v.on')?.id;if(av==='v-home')renderHome();if(av==='v-txs')renderTxs();if(av==='v-cards')renderCards();if(av==='v-trend')renderTrend();};
 window.openTx=id=>{
-  const t=txs.find(x=>x.id===id);if(!t)return;openTxId=id;
+  const t=txs.find(x=>x.id===id);if(!t||pendDel.has(id)||sentDel.has(id))return;openTxId=id;
   const cat=getCat(t.category),card=getCard(t.cardId),pl=isPlanned(t);
   document.getElementById('txd-ico').textContent=initials(t.description,2);
   document.getElementById('txd-desc').textContent=t.description;
@@ -692,25 +692,88 @@ window.openTx=id=>{
   document.getElementById('txd-act').hidden=false;document.getElementById('txd-cfm').hidden=true;
   document.getElementById('tx-ovl').classList.add('on');
 };
-window.askDelTx=()=>{document.getElementById('txd-act').hidden=true;document.getElementById('txd-cfm').hidden=false;document.getElementById('txd-no').focus();};
+window.askDelTx=()=>{document.getElementById('txd-act').hidden=true;document.getElementById('txd-cfm').hidden=false;document.getElementById('txd-yes').disabled=false;document.getElementById('txd-no').focus();};
 window.cancelDelTx=()=>{document.getElementById('txd-act').hidden=false;document.getElementById('txd-cfm').hidden=true;};
-const commitDel=id=>{const p=pendDel.get(id);if(!p)return;clearTimeout(p.timer);pendDel.delete(id);deleteTxRemote(id).catch(e=>{setSyncStatus('Silinemedi: '+(e?.message||e));rerender();});};
-function flushDel(){[...pendDel.keys()].forEach(commitDel);hideToast();}
+
+// Silme kuralları:
+// - Onaydan sonra kayıt ekrandan kalkar; UNDO_MS boyunca yalnızca bu cihazda bekler, Firestore'a hiçbir şey gitmez.
+// - Sayaç yalnızca uygulama ekrandayken işler: arka plana alınınca durur, dönünce en az RESUME_MS ile yeniden başlar.
+// - Uygulama kapanır/yenilenirse bekleyen silme gönderilmez; kayıt yerinde kalır ve sonraki açılışta bildirilir.
+// - Her işlem için en fazla bir silme isteği gönderilir; sonuç (silindi / eşitlenmeyi bekliyor / silinemedi) gösterilir.
+const RESUME_MS=3000,SYNC_WAIT_MS=2500;
+const isHidden=()=>document.visibilityState==='hidden';
+const delKey=()=>currentUser?`kasa-del:${currentUser.uid}`:null;
+const saveDelState=()=>{try{const k=delKey();if(!k)return;
+  const list=[...[...pendDel].map(([id,p])=>({id,d:p.desc,s:'p'})),...[...sentDel].map(id=>({id,d:sentDesc.get(id)||'',s:'s'}))];
+  if(list.length)localStorage.setItem(k,JSON.stringify(list));else localStorage.removeItem(k);}catch{}};
+const sentDesc=new Map();
+const toast=(msg,kind='',{undo=false,ms=0,bar=0}={})=>{
+  const el=document.getElementById('toast');clearTimeout(toastT);
+  el.className='toast'+(kind?' '+kind:'');el.dataset.kind=kind||'info';
+  document.getElementById('toast-t').textContent=msg;
+  document.getElementById('toast-undo').hidden=!undo;
+  const b=document.getElementById('toast-bar');b.hidden=!bar;
+  if(bar){b.style.animation='none';void b.offsetWidth;b.style.animation=`tbar ${bar}ms linear forwards`;}
+  el.hidden=false;if(ms)toastT=setTimeout(hideToast,ms);
+};
 const hideToast=()=>{clearTimeout(toastT);document.getElementById('toast').hidden=true;};
-window.confirmDelTx=()=>{
-  const id=openTxId;const t=txs.find(x=>x.id===id);
-  document.getElementById('tx-ovl').classList.remove('on');openTxId=null;
-  if(!t||pendDel.has(id))return;
-  // Önceki bekleyen silmeler hemen tamamlanır; geri al yalnızca son silme için geçerlidir
-  flushDel();
-  pendDel.set(id,{timer:setTimeout(()=>{commitDel(id);hideToast();},UNDO_MS)});
-  document.getElementById('toast-t').textContent=`“${t.description}” silindi`;
-  document.getElementById('toast').hidden=false;
+const pendingToast=()=>{
+  if(!pendDel.size)return;
+  const ps=[...pendDel.values()];const last=ps[ps.length-1];const left=Math.max(...ps.map(p=>p.left));
+  toast(ps.length>1?`${ps.length} işlem silinecek`:`“${last.desc}” silinecek`,'',{undo:true,bar:left});
+};
+const startTimer=(id)=>{const p=pendDel.get(id);if(!p)return;clearTimeout(p.timer);p.start=Date.now();p.timer=setTimeout(()=>timeUp(id),p.left);};
+const pauseTimers=()=>{for(const p of pendDel.values()){clearTimeout(p.timer);p.timer=null;p.left=Math.max(0,p.left-(Date.now()-p.start));}};
+const timeUp=id=>{
+  // Zamanlayıcı arka planda geç tetiklenirse silme yapılmaz; ekrana dönülünce sayaç sürer
+  if(isHidden()){const p=pendDel.get(id);if(p){p.timer=null;p.left=0;}return;}
+  commitDel(id);
+};
+const commitDel=id=>{
+  const p=pendDel.get(id);if(!p||sentDel.has(id))return;
+  clearTimeout(p.timer);pendDel.delete(id);sentDel.add(id);sentDesc.set(id,p.desc);saveDelState();
+  let settled=false;
+  if(pendDel.size)pendingToast();else toast(`“${p.desc}” siliniyor…`,'busy');
+  setTimeout(()=>{if(!settled&&!pendDel.size)toast(`“${p.desc}” bu cihazda silindi; bağlantı gelince sunucuyla eşitlenecek.`,'wait');},SYNC_WAIT_MS);
+  deleteTxRemote(id).then(()=>{
+    settled=true;sentDel.delete(id);sentDesc.delete(id);saveDelState();
+    if(!pendDel.size)toast(`“${p.desc}” silindi`,'ok',{ms:2500});
+  }).catch(e=>{
+    settled=true;sentDel.delete(id);sentDesc.delete(id);saveDelState();
+    toast(`“${p.desc}” silinemedi; kayıt yerinde duruyor. (${e?.code||e?.message||e})`,'er',{ms:7000});
+    rerender();
+  });
   rerender();
 };
-window.undoDel=()=>{for(const [id,p] of pendDel){clearTimeout(p.timer);pendDel.delete(id);}hideToast();rerender();};
-// Uygulama arka plana alınırsa onaylanmış silme bekletilmeden tamamlanır
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flushDel();});
+// Çıkışta: süresi dolmamış silmeler iptal edilir (kayıt korunur)
+function cancelPending(){for(const p of pendDel.values())clearTimeout(p.timer);pendDel.clear();saveDelState();hideToast();}
+window.confirmDelTx=()=>{
+  const id=openTxId;const t=txs.find(x=>x.id===id);
+  const yes=document.getElementById('txd-yes');if(yes.disabled)return;yes.disabled=true;
+  document.getElementById('tx-ovl').classList.remove('on');openTxId=null;
+  if(!t||pendDel.has(id)||sentDel.has(id))return;
+  pendDel.set(id,{desc:t.description,left:UNDO_MS,start:Date.now(),timer:null});saveDelState();
+  if(!isHidden())startTimer(id);
+  pendingToast();rerender();
+};
+window.undoDel=()=>{
+  if(!pendDel.size)return;
+  const n=pendDel.size;cancelPending();rerender();
+  toast(n>1?`${n} işlem geri alındı`:'Silme geri alındı; kayıt yerinde.','ok',{ms:2500});
+};
+document.addEventListener('visibilitychange',()=>{
+  if(isHidden())pauseTimers();
+  else if(pendDel.size){for(const [id,p] of pendDel){p.left=Math.max(p.left,RESUME_MS);startTimer(id);}pendingToast();}
+});
+// Önceki oturumdan kalan (gönderilmemiş ya da sunucuya ulaşmamış) silmeleri bildir; hiçbir şeyi silmez
+let staleChecked=false;
+const checkStaleDeletes=()=>{
+  if(staleChecked||pendDel.size||sentDel.size)return;staleChecked=true;
+  try{const k=delKey();const raw=k&&localStorage.getItem(k);if(!raw)return;localStorage.removeItem(k);
+    const still=JSON.parse(raw).filter(x=>txs.some(t=>t.id===x.id));
+    if(still.length)toast(still.length>1?`Uygulama kapandığı için ${still.length} işlem silinmedi; kayıtlar yerinde.`:`Uygulama kapandığı için “${still[0].d}” silinmedi; kayıt yerinde.`,'wait',{ms:8000});
+  }catch{}
+};
 
 const renderCards=()=>{
   updateMLabels();renderAlerts('cards-alrts');

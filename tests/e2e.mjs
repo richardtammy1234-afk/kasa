@@ -42,7 +42,7 @@ const STUBS={
     export const collection=(db,p)=>({path:p});
     export const doc=(c,id)=>({path:c.path,id});
     export const setDoc=(r,d)=>{window.__writes.push(['set',r.path,r.id]);(S[r.path]??={})[r.id]=structuredClone(d);emit(r.path);return window.__offline?pending():Promise.resolve();};
-    export const deleteDoc=async r=>{window.__writes.push(['del',r.path,r.id]);delete (S[r.path]||{})[r.id];emit(r.path);};
+    export const deleteDoc=async r=>{window.__writes.push(['del',r.path,r.id]);if(window.__failDel){throw Object.assign(new Error('izin yok'),{code:'permission-denied'});}delete (S[r.path]||{})[r.id];emit(r.path);};
     export const onSnapshot=(c,cb)=>{(L[c.path]??=[]).push(cb);setTimeout(()=>cb(snap(c.path)),0);return()=>{};};
     export const writeBatch=()=>{const ops=[];return{set:(r,d)=>ops.push(()=>setDoc(r,d)),delete:r=>ops.push(()=>deleteDoc(r)),commit:async()=>{for(const o of ops)await o();}};};`,
 };
@@ -390,7 +390,7 @@ await step('silme geri alınabilir: "Geri al" kaydı hiç silmeden geri getirir'
   await page.locator('#txs-wrap .txi[data-id="seed1"]').tap();
   await page.tap('#txd-del');await page.tap('#txd-yes');
   await page.waitForSelector('#toast',{state:'visible'});
-  assert.match(await page.textContent('#toast'),/Mevcut test işlemi” silindi/);
+  assert.match(await page.textContent('#toast'),/Mevcut test işlemi” silinecek/);
   assert.equal(await page.locator('#txs-wrap .txi[data-id="seed1"]').count(),0,'satır ekrandan kalkmalı');
   assert.equal((await page.evaluate(()=>window.__writes)).filter(w=>w[0]==='del').length,0,'geri alma süresinde silinmemeli');
   await page.tap('#toast-undo');
@@ -400,15 +400,46 @@ await step('silme geri alınabilir: "Geri al" kaydı hiç silmeden geri getirir'
   assert.deepEqual((await store()).seed1,SEED_TX);
 });
 
+const setHidden=h=>page.evaluate(h=>{Object.defineProperty(document,'visibilityState',{value:h?'hidden':'visible',configurable:true});document.dispatchEvent(new Event('visibilitychange'));},h);
+const delCount=async id=>(await page.evaluate(()=>window.__writes)).filter(w=>w[0]==='del'&&w[2]===id).length;
+
+await step('arka plana alınınca bekleyen silme hızlandırılmaz; sayaç durur, dönünce sürer',async()=>{
+  await page.locator('#txs-wrap .txi[data-id="seed1"]').tap();
+  await page.tap('#txd-del');await page.tap('#txd-yes');
+  await setHidden(true);
+  await page.waitForTimeout(8000);
+  assert.equal(await delCount('seed1'),0,'arka planda silme gönderilmemeli');
+  assert.ok((await store()).seed1);
+  await setHidden(false);
+  assert.match(await page.textContent('#toast'),/silinecek/,'dönünce geri al yeniden sunulmalı');
+  await page.tap('#toast-undo');
+  await page.waitForSelector('#txs-wrap .txi[data-id="seed1"]');
+  await page.waitForTimeout(3500);
+  assert.equal(await delCount('seed1'),0);
+});
+
+await step('çift dokunuş tek silme isteği üretir; başarısızlık açıkça bildirilir ve kayıt geri gelir',async()=>{
+  await page.evaluate(()=>{window.__failDel=true;});
+  await page.locator('#txs-wrap .txi[data-id="seed1"]').tap();
+  await page.tap('#txd-del');
+  await page.evaluate(()=>{window.confirmDelTx();window.confirmDelTx();});
+  await page.waitForFunction(()=>/silinemedi; kayıt yerinde/.test(document.getElementById('toast').textContent),null,{timeout:9000});
+  assert.equal(await delCount('seed1'),1,'tek istek gönderilmeli');
+  assert.ok((await store()).seed1);
+  await page.waitForSelector('#txs-wrap .txi[data-id="seed1"]');
+  await page.evaluate(()=>{window.__failDel=false;});
+});
+await page.screenshot({path:path.join(OUT,'7b-silinemedi.png')});
+
 await step('onaylanan silme süre dolunca yalnızca o işlemi siler',async()=>{
   const before=Object.keys(await store()).length;
   await page.locator('#txs-wrap .txi[data-id="seed1"]').tap();
   await page.tap('#txd-del');await page.tap('#txd-yes');
   await page.screenshot({path:path.join(OUT,'7-geri-al.png')});
-  await page.waitForSelector('#toast',{state:'hidden',timeout:9000});
-  await page.waitForFunction(()=>!window.__store['users/test-uid/txs'].seed1);
-  const dels=(await page.evaluate(()=>window.__writes)).filter(w=>w[0]==='del');
-  assert.deepEqual(dels,[['del','users/test-uid/txs','seed1']]);
+  await page.waitForFunction(()=>!window.__store['users/test-uid/txs'].seed1,null,{timeout:9000});
+  await page.waitForFunction(()=>/Mevcut test işlemi” silindi/.test(document.getElementById('toast').textContent));
+  assert.equal(await delCount('seed1'),2,'bir başarısız + bir başarılı istek');
+  assert.equal((await page.evaluate(()=>window.__writes)).filter(w=>w[0]==='del'&&w[2]!=='seed1').length,0);
   assert.equal(Object.keys(await store()).length,before-1);
   assert.deepEqual((await store()).fut1,FUT_TX,'planlanan kayıt korunmalı');
   await page.tap('.bni[data-tab="home"]');await page.tap('.hico');
