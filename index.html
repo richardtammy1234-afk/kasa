@@ -183,6 +183,25 @@ button{cursor:pointer;border:none;background:none;}
 .srch input{flex:1;font-size:13px;}
 .emp{padding:2.5rem 1rem;text-align:center;color:var(--txt3);font-size:13px;}
 .loading{padding:3rem;text-align:center;color:var(--txt3);font-size:13px;}
+
+/* QUICK ADD */
+.qk{margin-bottom:14px;}
+.qk input{font-size:17px;padding:12px 13px;border-radius:12px;}
+.qk-hint{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px;min-height:20px;}
+.qk-tag{font-size:11px;padding:3px 8px;border-radius:12px;background:var(--bg3);color:var(--txt2);}
+.qk-tag.ok{background:#5b50e81f;color:var(--acc);font-weight:600;}
+.qk-tag.wr{background:#f59e0b26;color:#b45309;}
+@media(prefers-color-scheme:dark){.qk-tag.wr{color:#fcd34d;}}
+.qk .chips{padding:6px 0 0;}
+.qk-sep{height:0.5px;background:var(--bdr);margin:2px 0 14px;}
+.cfm{background:var(--bg2);border:0.5px solid var(--bdr2);border-radius:var(--r);padding:12px;margin-top:10px;}
+.cfm-t{font-size:11px;color:var(--txt2);font-weight:500;margin-bottom:6px;}
+.cfm-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;}
+.cfm-d{font-size:15px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cfm-a{font-size:17px;font-weight:700;color:var(--red);font-variant-numeric:tabular-nums;flex-shrink:0;}
+.cfm-m{font-size:12px;color:var(--txt2);margin-top:3px;}
+.btn2{flex:1;background:transparent;border:0.5px solid var(--bdr2);color:var(--txt);padding:11px;border-radius:var(--r2);cursor:pointer;font-size:13px;font-weight:500;}
+.btn1:disabled,.btns:disabled{opacity:.6;}
 </style>
 </head>
 <body>
@@ -245,7 +264,7 @@ button{cursor:pointer;border:none;background:none;}
     <div class="pg">
       <div style="padding-top:.25rem">
         <div class="srch">
-          <input type="text" id="s-q" placeholder="İşlem ara..." oninput="renderTxs()">
+          <input type="text" id="s-q" placeholder="İşlem ara..." oninput="renderTxs()" style="font-size:16px;">
           <input type="month" id="s-mo" style="max-width:135px;font-size:12px;" onchange="renderTxs()">
         </div>
         <div class="chips" id="s-crd-chips"></div>
@@ -307,6 +326,12 @@ button{cursor:pointer;border:none;background:none;}
       </div>
       <div class="icard">
         <div class="it">Veri Yönetimi</div>
+        <p style="font-size:12px;color:var(--txt2);margin-bottom:10px;">Yedek; tüm kart ve işlemlerini bir dosyaya kaydeder. Geri yükleme yalnızca eksik kayıtları ekler, mevcut kayıtları değiştirmez veya silmez.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+          <button onclick="exportBackup()" style="background:var(--acc);color:#fff;padding:9px 14px;border-radius:var(--r2);font-size:13px;font-weight:500;">Yedek indir</button>
+          <label style="background:var(--bg2);border:0.5px solid var(--bdr2);padding:9px 14px;border-radius:var(--r2);font-size:13px;font-weight:500;cursor:pointer;">Yedekten geri yükle<input type="file" id="bk-file" accept="application/json,.json" style="display:none" onchange="restoreBackup(this)"></label>
+        </div>
+        <span class="fbk" id="bk-fb" style="display:block;margin:0 0 12px;"></span>
         <p style="font-size:12px;color:var(--txt2);margin-bottom:12px;">Sadece işlemler silinir. Kartlar korunur.</p>
         <button class="dbtn" onclick="clearTxs()">Tüm işlemleri sil</button>
       </div>
@@ -367,16 +392,35 @@ button{cursor:pointer;border:none;background:none;}
   <div class="sht">
     <div class="shdl"></div>
     <div class="shtt">İşlem Ekle</div>
+    <div class="qk">
+      <div class="fg" style="margin-bottom:0"><label for="q-in">Hızlı giriş</label>
+        <input type="text" id="q-in" placeholder="örn. Migros 450 İş Bankası" autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="false" enterkeyhint="done" oninput="window.onQuick()" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();window.reviewTx();}">
+      </div>
+      <div class="qk-hint" id="q-hint"></div>
+      <div class="chips" id="q-sugs"></div>
+    </div>
+    <div class="qk-sep"></div>
+    <div id="addtx-form" oninput="window.onFormEdit(event)" onchange="window.onFormEdit(event)">
     <div class="fr2">
       <div class="fg"><label>Tarih</label><input type="date" id="f-date"></div>
-      <div class="fg"><label>Tutar (₺)</label><input type="number" id="f-amt" placeholder="0.00" step="0.01" min="0"></div>
+      <div class="fg"><label>Tutar (₺)</label><input type="number" id="f-amt" placeholder="0.00" step="0.01" min="0" inputmode="decimal"></div>
     </div>
     <div class="fg"><label>Açıklama</label><input type="text" id="f-desc" placeholder="Migros, Trendyol..."></div>
     <div class="fr2">
       <div class="fg"><label>Kategori</label><select id="f-cat"></select></div>
       <div class="fg"><label>Kart</label><select id="f-crd"></select></div>
     </div>
-    <button class="btn1" onclick="addTx()">Kaydet</button>
+    </div>
+    <button class="btn1" id="addtx-next" onclick="reviewTx()">Devam</button>
+    <div class="cfm" id="addtx-cfm" style="display:none">
+      <div class="cfm-t">Bu işlem kaydedilsin mi?</div>
+      <div class="cfm-row"><div class="cfm-d" id="cfm-desc"></div><div class="cfm-a" id="cfm-amt"></div></div>
+      <div class="cfm-m" id="cfm-meta"></div>
+      <div class="sbt">
+        <button class="btn2" onclick="window.cancelReview()">Düzelt</button>
+        <button class="btns" id="addtx-save" onclick="addTx()">Onayla ve Kaydet</button>
+      </div>
+    </div>
     <span class="fbk" id="addtx-fb" style="display:block;margin-top:8px;text-align:center;"></span>
   </div>
 </div>
@@ -385,6 +429,12 @@ button{cursor:pointer;border:none;background:none;}
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut as fbSignOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
 import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, writeBatch } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
+
+// Hızlı giriş modülü ayrı yüklenir: dosya alınamazsa (ağ/önbellek) giriş, liste ve normal işlem ekleme yine çalışır.
+let QP=null;
+import('./quick-parse.js?v=2').then(m=>{QP=m;}).catch(e=>{console.warn('Hızlı giriş yüklenemedi',e);});
+// Yerel saatle YYYY-MM-DD (toISOString UTC'dir; Türkiye'de 00:00-03:00 arası önceki günü verir)
+const localDate=(d=new Date(),offsetDays=0)=>{const x=new Date(d.getFullYear(),d.getMonth(),d.getDate()+offsetDays);return`${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`;};
 
 const firebaseConfig = {
   apiKey: "AIzaSyB0CHxGzazi7pJVOqkaQ5lfCHizPJh7DHE",
@@ -417,7 +467,7 @@ const DEFAULT_CARDS=[
 ];
 
 let txs=[],cards=[],curMonth=new Date(),editCardId=null,chts={},sCrd=null,sCat=null;
-let currentUser=null,unsubTxs=null,unsubCards=null;
+let currentUser=null,unsubTxs=null,unsubCards=null,txsLoaded=false,cardsLoaded=false;
 
 const fmt=n=>'₺'+parseFloat(n).toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2});
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,5);
@@ -426,6 +476,7 @@ const curKey=()=>`${curMonth.getFullYear()}-${String(curMonth.getMonth()+1).padS
 const mTxs=k=>txs.filter(t=>mKey(t.date)===k);
 const getCat=n=>CATS.find(c=>c.n===n)||{n:'Diğer',c:'#6b7280'};
 const getCard=id=>cards.find(c=>c.id===id)||{name:'?',color:'#888',type:'?'};
+const esc=s=>String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 
 const setSyncStatus=(msg,color='rgba(255,255,255,.6)')=>{const el=document.getElementById('sync-status');if(el){el.textContent=msg;el.style.color=color;}};
 
@@ -459,15 +510,18 @@ const deleteCard=async()=>{
 const subscribeData=()=>{
   if(unsubTxs)unsubTxs();
   if(unsubCards)unsubCards();
+  txsLoaded=cardsLoaded=false;
   setSyncStatus('Senkronize ediliyor...');
   unsubCards=onSnapshot(userRef('cards'),snap=>{
     cards=snap.docs.map(d=>d.data());
     if(!cards.length){
+      if(snap.metadata?.fromCache)return;
       const batch=writeBatch(db);
       DEFAULT_CARDS.forEach(c=>batch.set(doc(userRef('cards'),c.id),c));
       batch.commit();
       return;
     }
+    cardsLoaded=true;
     rebuildSelects();
     const av=document.querySelector('.v.on')?.id;
     if(av==='v-home')renderHome();
@@ -475,7 +529,8 @@ const subscribeData=()=>{
   });
   unsubTxs=onSnapshot(userRef('txs'),snap=>{
     txs=snap.docs.map(d=>d.data());
-    setSyncStatus('Senkronize ✓');
+    if(!snap.metadata?.fromCache)txsLoaded=true;
+    if(!snap.metadata?.hasPendingWrites)setSyncStatus('Senkronize ✓');
     const av=document.querySelector('.v.on')?.id;
     if(av==='v-home')renderHome();
     if(av==='v-txs')renderTxs();
@@ -523,7 +578,7 @@ const renderAlerts=id=>{
   const a=getDueAlerts();const el=document.getElementById(id);if(!el)return;
   el.innerHTML=a.map(({card,d,dy})=>{
     const cls=dy<=1?'d':'w';
-    const msg=dy===0?`<b>${card.name}</b> son ödeme <b>BUGÜN!</b>`:dy<0?`<b>${card.name}</b> ödemesi gecikmiş!`:`<b>${card.name}</b> son ödeme: ${dy} gün sonra (${d.toLocaleDateString('tr-TR')})`;
+    const msg=dy===0?`<b>${esc(card.name)}</b> son ödeme <b>BUGÜN!</b>`:dy<0?`<b>${esc(card.name)}</b> ödemesi gecikmiş!`:`<b>${esc(card.name)}</b> son ödeme: ${dy} gün sonra (${d.toLocaleDateString('tr-TR')})`;
     return`<div class="alrt ${cls}"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span>${msg}</span></div>`;
   }).join('');
   document.getElementById('ndot')?.classList.toggle('on',a.length>0);
@@ -560,8 +615,8 @@ const txItemHTML=(t,del=false)=>{
   return`<div class="txi">
     <div class="tx-ic" style="background:${cat.c}1a;color:${cat.c}">${cat.n.charAt(0)}</div>
     <div class="txd">
-      <div class="txn">${t.description}</div>
-      <div class="txm">${dt} · ${cat.n} · <span style="color:${card.color};font-weight:600">${card.name}</span></div>
+      <div class="txn">${esc(t.description)}</div>
+      <div class="txm">${dt} · ${cat.n} · <span style="color:${card.color};font-weight:600">${esc(card.name)}</span></div>
     </div>
     <div class="txa">${fmt(t.amount)}</div>
     ${del?`<button class="txdl" onclick="window.delTx('${t.id}')">×</button>`:''}
@@ -587,7 +642,7 @@ const renderHome=()=>{
   document.getElementById('home-ccar').innerHTML=cards.map(c=>`
     <div class="ccard" style="border-top-color:${c.color}" onclick="goTab('cards')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-        <div><div class="ccard-nm" style="color:${c.color}">${c.name}</div><div class="ccard-tp">${c.type}${c.dueDay?` · Ödeme: ${c.dueDay}.`:''}</div></div>
+        <div><div class="ccard-nm" style="color:${c.color}">${esc(c.name)}</div><div class="ccard-tp">${esc(c.type)}${c.dueDay?` · Ödeme: ${c.dueDay}.`:''}</div></div>
         <div style="width:18px;height:13px;border-radius:2px;background:var(--bdr2);"></div>
       </div>
       <div><div class="ccard-amt">${fmt(ct[c.id]||0)}</div><div class="ccard-sub">bu ay harcama</div></div>
@@ -598,7 +653,7 @@ const renderHome=()=>{
 
 const renderTxs=()=>{
   const cc=document.getElementById('s-crd-chips');
-  if(!cc.dataset.b){cc.innerHTML='<div class="ch on" data-cid="" onclick="window.setCrdF(this,\'\')">Tümü</div>'+cards.map(c=>`<div class="ch" data-cid="${c.id}" onclick="window.setCrdF(this,'${c.id}')">${c.name}</div>`).join('');cc.dataset.b='1';}
+  if(!cc.dataset.b){cc.innerHTML='<div class="ch on" data-cid="" onclick="window.setCrdF(this,\'\')">Tümü</div>'+cards.map(c=>`<div class="ch" data-cid="${c.id}" onclick="window.setCrdF(this,'${c.id}')">${esc(c.name)}</div>`).join('');cc.dataset.b='1';}
   const catc=document.getElementById('s-cat-chips');
   if(!catc.dataset.b){catc.innerHTML='<div class="ch on" data-cat="" onclick="window.setCatF(this,\'\')">Tümü</div>'+CATS.map(c=>`<div class="ch" data-cat="${c.n}" onclick="window.setCatF(this,'${c.n}')">${c.n}</div>`).join('');catc.dataset.b='1';}
   const q=document.getElementById('s-q').value.toLowerCase();
@@ -612,6 +667,8 @@ const renderTxs=()=>{
   document.getElementById('txs-wrap').innerHTML=f.length?`<div class="txw">${f.map(t=>txItemHTML(t,true)).join('')}</div>`:`<div class="emp">İşlem bulunamadı</div>`;
 };
 
+// HTML'deki oninput/onchange çağrıları için (modül içindeki fonksiyonlar global değildir)
+window.renderTxs=renderTxs;
 window.setCrdF=(el,id)=>{sCrd=id||null;document.querySelectorAll('#s-crd-chips .ch').forEach(c=>c.classList.toggle('on',c.dataset.cid===id));renderTxs();};
 window.setCatF=(el,n)=>{sCat=n||null;document.querySelectorAll('#s-cat-chips .ch').forEach(c=>c.classList.toggle('on',c.dataset.cat===n));renderTxs();};
 window.delTx=async id=>{if(!confirm('Bu işlemi silmek istiyor musun?'))return;await deleteTxRemote(id);};
@@ -629,8 +686,8 @@ const renderCards=()=>{
       dtHtml=`<div class="cgi-dr">${s}${d}</div>`;
     }
     return`<div class="cgi" style="border-top-color:${c.color}" onclick="window.openCardEdit('${c.id}')">
-      <div class="cgi-nm" style="color:${c.color}">${c.name}</div>
-      <div class="cgi-tp">${c.type}${c.limit?` · ₺${c.limit.toLocaleString('tr-TR')}`:''}</div>
+      <div class="cgi-nm" style="color:${c.color}">${esc(c.name)}</div>
+      <div class="cgi-tp">${esc(c.type)}${c.limit?` · ₺${c.limit.toLocaleString('tr-TR')}`:''}</div>
       <div class="cgi-sp">${fmt(spend)}</div><div class="cgi-sl">bu ay</div>${dtHtml}
     </div>`;
   }).join('');
@@ -668,34 +725,125 @@ window.openCardEdit=id=>{
 window.saveCard=saveCard;
 window.deleteCard=deleteCard;
 
-window.openAddTx=()=>{
-  document.getElementById('f-date').value=new Date().toISOString().split('T')[0];
-  document.getElementById('f-amt').value='';document.getElementById('f-desc').value='';
-  document.getElementById('addtx-fb').textContent='';
-  document.getElementById('addtx-ovl').classList.add('on');
+// Son seçilen kart cihazda, kullanıcı bazında hatırlanır (sadece kart kimliği; finansal veri değil)
+const lastCardKey=()=>`kasa:lastCard:${currentUser?.uid||''}`;
+const getLastCard=()=>{try{const id=localStorage.getItem(lastCardKey());return cards.some(c=>c.id===id)?id:null;}catch(e){return null;}};
+const setLastCard=id=>{try{localStorage.setItem(lastCardKey(),id);}catch(e){}};
+const defaultCardId=()=>getLastCard()||cards[0]?.id||'';
+
+// Kullanıcının elle değiştirdiği alanlar hızlı giriş tarafından ezilmez
+let touched=new Set(),saving=false;
+const $=id=>document.getElementById(id);
+const setField=(id,val)=>{if(!touched.has(id))$(id).value=val;};
+
+window.onFormEdit=e=>{
+  if(e.target?.id)touched.add(e.target.id);
+  hideReview();
 };
-window.addTx=async()=>{
-  const date=document.getElementById('f-date').value;
-  const amount=parseFloat(document.getElementById('f-amt').value);
-  const description=document.getElementById('f-desc').value.trim();
-  const category=document.getElementById('f-cat').value;
-  const cardId=document.getElementById('f-crd').value;
-  const fb=document.getElementById('addtx-fb');
-  if(!date||!amount||!description||!category||!cardId){fb.className='fbk er';fb.textContent='Tüm alanları doldur.';return;}
-  const tx={id:uid(),date,amount,description,category,cardId};
-  await saveTx(tx);
-  fb.className='fbk ok';fb.textContent='Eklendi!';
-  document.getElementById('f-amt').value='';document.getElementById('f-desc').value='';
-  setTimeout(()=>{document.getElementById('addtx-ovl').classList.remove('on');},600);
+
+const renderQuickSugs=()=>{
+  const since=localDate(new Date(),-120);
+  const sugs=QP?QP.frequentDescriptions(txs.filter(t=>String(t.date)>=since),6):[];
+  $('q-sugs').innerHTML=sugs.map((d,i)=>`<div class="ch" data-i="${i}">${esc(d)}</div>`).join('');
+  $('q-sugs').querySelectorAll('.ch').forEach((el,i)=>el.onclick=()=>{const q=$('q-in');q.value=sugs[i]+' ';q.focus();window.onQuick();});
+};
+
+window.onQuick=()=>{
+  hideReview();
+  const text=$('q-in').value;
+  const hint=$('q-hint');
+  if(!text.trim()){hint.innerHTML='';return;}
+  if(!QP){hint.innerHTML='<span class="qk-tag wr">Hızlı giriş yüklenemedi — alanları aşağıdan doldur</span>';return;}
+  const r=QP.parseQuick(text,{cards,categories:CATS,history:txs});
+  setField('f-desc',r.description);
+  setField('f-amt',r.amount??'');
+  setField('f-date',localDate(new Date(),r.dayOffset));
+  setField('f-cat',r.category||'Diğer');
+  setField('f-crd',r.cardId||defaultCardId());
+  const tags=[];
+  tags.push(r.amount!=null?`<span class="qk-tag ok">${fmt(r.amount)}</span>`:`<span class="qk-tag wr">Tutar yaz</span>`);
+  if(r.category)tags.push(`<span class="qk-tag ok">${esc(r.category)}</span>`);
+  if(r.cardId)tags.push(`<span class="qk-tag ok">${esc(r.cardMatched)}</span>`);
+  else if(r.unknownBank)tags.push(`<span class="qk-tag wr">"${esc(r.unknownBank)}" kartı kayıtlı değil — Kart alanından seç</span>`);
+  else if(cards.length)tags.push(`<span class="qk-tag">${esc(getCard($('f-crd').value).name)}${getLastCard()?' (son kullanılan)':''}</span>`);
+  if(r.dayOffset)tags.push(`<span class="qk-tag ok">${r.dayOffset===-1?'Dün':'Önceki gün'}</span>`);
+  hint.innerHTML=tags.join('');
+};
+
+const readForm=()=>({
+  date:$('f-date').value,
+  amount:parseFloat($('f-amt').value),
+  description:$('f-desc').value.trim(),
+  category:$('f-cat').value,
+  cardId:$('f-crd').value,
+});
+const validTx=t=>t.date&&t.amount>0&&t.description&&t.category&&t.cardId;
+
+const hideReview=()=>{$('addtx-cfm').style.display='none';$('addtx-next').style.display='';};
+window.cancelReview=()=>{hideReview();$('q-in').focus();};
+
+window.openAddTx=()=>{
+  touched=new Set();saving=false;$('addtx-save').disabled=false;
+  const q=$('q-in');q.value='';
+  $('q-hint').innerHTML='';
+  $('f-date').value=localDate();
+  $('f-amt').value='';$('f-desc').value='';
+  $('f-cat').value=CATS[0].n;
+  const dc=defaultCardId();if(dc)$('f-crd').value=dc;
+  $('addtx-fb').textContent='';
+  hideReview();
+  renderQuickSugs();
+  $('addtx-ovl').classList.add('on');
+  // iPhone klavyeyi yalnızca dokunma olayı içinde odaklanınca açar
+  q.focus();
+};
+
+// 1. adım: özet göster, kaydetmeden önce onay iste
+window.reviewTx=()=>{
+  const t=readForm();
+  const fb=$('addtx-fb');
+  if(!validTx(t)){fb.className='fbk er';fb.textContent=!(t.amount>0)?'Tutar gir.':!t.description?'Açıklama gir.':'Tüm alanları doldur.';return;}
+  fb.textContent='';
+  const card=getCard(t.cardId);
+  $('cfm-desc').textContent=t.description;
+  $('cfm-amt').textContent=fmt(t.amount);
+  $('cfm-meta').textContent=`${t.category} · ${card.name} · ${new Date(t.date+'T00:00').toLocaleDateString('tr-TR')}`;
+  $('addtx-next').style.display='none';
+  $('addtx-cfm').style.display='';
+  $('addtx-save').focus();
+};
+
+// 2. adım: onaylanınca kaydet.
+// Firestore yazıyı hemen yerelde uygular ve listeye yansıtır; sunucu onayı internet yokken gelmez.
+// Bu yüzden arayüz onayı beklemez, hata olursa ayrıca bildirilir.
+window.addTx=()=>{
+  if(saving)return;
+  const t=readForm();
+  const fb=$('addtx-fb');
+  if(!validTx(t)){fb.className='fbk er';fb.textContent='Tüm alanları doldur.';hideReview();return;}
+  const tx={id:uid(),date:t.date,amount:t.amount,description:t.description,category:t.category,cardId:t.cardId};
+  saving=true;$('addtx-save').disabled=true;
+  setSyncStatus('Kaydediliyor...');
+  let p;
+  try{p=saveTx(tx);}catch(e){p=Promise.reject(e);}
+  p.then(()=>setSyncStatus('Senkronize ✓'))
+   .catch(e=>{setSyncStatus('Kaydedilemedi!','#fecaca');alert(`"${tx.description}" (${fmt(tx.amount)}) kaydedilemedi: ${e?.message||e}`);});
+  setLastCard(tx.cardId);
+  fb.className='fbk ok';
+  fb.textContent=navigator.onLine===false?'Eklendi — internet gelince senkronize edilecek':'Eklendi!';
+  $('f-amt').value='';$('f-desc').value='';$('q-in').value='';$('q-hint').innerHTML='';
+  hideReview();
+  setTimeout(()=>{$('addtx-ovl').classList.remove('on');saving=false;$('addtx-save').disabled=false;},600);
 };
 
 window.closeOvl=(id,e)=>{if(e.target===document.getElementById(id))document.getElementById(id).classList.remove('on');};
 
 const rebuildSelects=()=>{
-  const cOpts=cards.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
-  ['f-crd','i-crd'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=cOpts;});
+  const cOpts=cards.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
+  // Senkronizasyon sırasında açık formdaki seçimi kaybetme
+  ['f-crd','i-crd'].forEach(id=>{const el=document.getElementById(id);if(el){const v=el.value;el.innerHTML=cOpts;if(v&&cards.some(c=>c.id===v))el.value=v;else if(id==='f-crd'){const lc=getLastCard();if(lc)el.value=lc;}}});
   const catOpts=CATS.map(c=>`<option value="${c.n}">${c.n}</option>`).join('');
-  const fc=document.getElementById('f-cat');if(fc)fc.innerHTML=catOpts;
+  const fc=document.getElementById('f-cat');if(fc){const v=fc.value;fc.innerHTML=catOpts;if(v)fc.value=v;}
   const cc=document.getElementById('s-crd-chips');if(cc){cc.dataset.b='';cc.innerHTML='';}
 };
 
@@ -747,13 +895,75 @@ window.doImport=async()=>{
 };
 
 window.clearTxs=async()=>{
-  if(!confirm('Tüm işlemler silinecek. Emin misin?'))return;
+  const ans=prompt(`${txs.length} işlemin TAMAMI kalıcı olarak silinecek. Önce "Yedek indir" ile yedek alman önerilir.\n\nOnaylamak için SİL yaz:`);
+  if(ans===null||ans.trim().toLocaleUpperCase('tr-TR').replace('I','İ')!=='SİL')return;
   const batch=writeBatch(db);
   txs.forEach(t=>batch.delete(doc(userRef('txs'),t.id)));
   await batch.commit();
 };
 
-document.getElementById('s-mo').value=new Date().toISOString().slice(0,7);
+const TX_FIELDS=['id','date','amount','description','category','cardId'];
+const CARD_FIELDS=['id','name','type','color','limit','statementDay','dueDay'];
+const pick=(o,f)=>Object.fromEntries(f.filter(k=>o[k]!==undefined).map(k=>[k,o[k]]));
+const okId=id=>typeof id==='string'&&id.length>0&&id.length<200&&!id.includes('/')&&id!=='.'&&id!=='..';
+const okTx=t=>t&&okId(t.id)&&/^\d{4}-\d{2}-\d{2}$/.test(t.date)&&typeof t.amount==='number'&&t.amount>0&&typeof t.description==='string'&&typeof t.category==='string'&&typeof t.cardId==='string';
+const okDay=v=>v==null||(Number.isInteger(v)&&v>=1&&v<=31);
+// Kartın ayarlarını karşılaştırmak için (eksik alan = null)
+const cardSig=c=>JSON.stringify(CARD_FIELDS.map(k=>c[k]??null));
+// Uygulamanın boş hesapta kendiliğinden oluşturduğu ve kullanıcının hiç değiştirmediği varsayılan kart mı?
+const isUntouchedDefault=c=>{const d=DEFAULT_CARDS.find(x=>x.id===c.id);return !!d&&cardSig(d)===cardSig(c);};
+const okCard=c=>c&&okId(c.id)&&typeof c.name==='string'&&c.name.length>0&&(c.color==null||/^#[0-9a-f]{3,8}$/i.test(c.color))&&(c.type==null||typeof c.type==='string')&&(c.limit==null||typeof c.limit==='number')&&okDay(c.statementDay)&&okDay(c.dueDay);
+
+window.exportBackup=async()=>{
+  const fb=$('bk-fb');
+  if(!txsLoaded||!cardsLoaded){fb.className='fbk er';fb.textContent='Veriler henüz yüklenmedi, birkaç saniye sonra tekrar dene.';return;}
+  const name=`kasa-yedek-${localDate()}.json`;
+  const json=JSON.stringify({app:'kasa',version:1,exportedAt:new Date().toISOString(),cards:cards.map(c=>pick(c,CARD_FIELDS)),txs:txs.map(t=>pick(t,TX_FIELDS))},null,1);
+  const blob=new Blob([json],{type:'application/json'});
+  fb.className='fbk ok';fb.textContent=`${txs.length} işlem, ${cards.length} kart yedeklendi.`;
+  try{
+    const file=new File([blob],name,{type:'application/json'});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:name});return;}
+  }catch(e){if(e?.name==='AbortError'){fb.textContent='';return;}}
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000);
+};
+
+// Yalnızca eksik kayıtları ekler; kimliği zaten var olan hiçbir kart/işleme yazmaz.
+window.restoreBackup=async input=>{
+  const f=input.files?.[0];input.value='';
+  const fb=$('bk-fb');fb.className='fbk er';
+  if(!f)return;
+  if(!txsLoaded||!cardsLoaded){fb.textContent='Veriler henüz yüklenmedi, birkaç saniye sonra tekrar dene.';return;}
+  let data;
+  try{data=JSON.parse(await f.text());}catch(e){fb.textContent='Dosya okunamadı (geçerli bir Kasa yedeği değil).';return;}
+  if(data?.app!=='kasa'||!Array.isArray(data.txs)||!Array.isArray(data.cards)){fb.textContent='Bu dosya bir Kasa yedeği değil.';return;}
+  const haveT=new Set(txs.map(t=>t.id)),curC=new Map(cards.map(c=>[c.id,c]));
+  const vT=data.txs.filter(okTx),vC=data.cards.filter(okCard);
+  const newT=vT.filter(t=>!haveT.has(t.id)),newC=vC.filter(c=>!curC.has(c.id));
+  // Boş hesapta uygulama varsayılan kartları (c1..c7) yeniden oluşturur. Bunlar HİÇ değiştirilmemişse
+  // yedekteki ad/limit/tarih/renk ayarlarıyla değiştirilir; kullanıcının değiştirdiği kartlara asla dokunulmaz.
+  const differs=c=>cardSig(c)!==cardSig(curC.get(c.id));
+  const fixC=vC.filter(c=>curC.has(c.id)&&differs(c)&&isUntouchedDefault(curC.get(c.id)));
+  const keptC=vC.filter(c=>curC.has(c.id)&&differs(c)&&!isUntouchedDefault(curC.get(c.id))).length;
+  const bad=data.txs.length-vT.length+data.cards.length-vC.length;
+  const notes=`${keptC?` ${keptC} kart sende farklı ayarlı olduğu için olduğu gibi bırakıldı.`:''}${bad?` ${bad} geçersiz satır atlandı.`:''}`;
+  if(!newT.length&&!newC.length&&!fixC.length){fb.className='fbk ok';fb.textContent=`Eksik kayıt yok — hiçbir şey değişmedi.${notes}`;return;}
+  if(!confirm(`${newT.length} işlem ve ${newC.length} kart eklenecek.`+
+    (fixC.length?`\n${fixC.length} varsayılan kart (hiç değiştirilmemiş) yedekteki ayarlarına döndürülecek: ${fixC.map(c=>c.name).join(', ')}.`:'')+
+    `\nMevcut işlemler ve senin değiştirdiğin kartlar DEĞİŞTİRİLMEYECEK.${keptC?`\n(${keptC} kart sende farklı ayarlı; olduğu gibi kalacak.)`:''}\n\nDevam edilsin mi?`))return;
+  const ops=[...newC.map(c=>[userRef('cards'),pick(c,CARD_FIELDS)]),...fixC.map(c=>[userRef('cards'),pick(c,CARD_FIELDS)]),...newT.map(t=>[userRef('txs'),pick(t,TX_FIELDS)])];
+  try{
+    for(let i=0;i<ops.length;i+=400){
+      const b=writeBatch(db);
+      ops.slice(i,i+400).forEach(([col,d])=>b.set(doc(col,d.id),d));
+      await b.commit();
+    }
+    fb.className='fbk ok';fb.textContent=`${newT.length} işlem, ${newC.length} kart geri yüklendi${fixC.length?`, ${fixC.length} kartın ayarları yedekten alındı`:''}.${notes}`;
+  }catch(e){fb.textContent='Geri yükleme hatası: '+(e?.message||e);}
+};
+
+document.getElementById('s-mo').value=localDate().slice(0,7);
 updateMLabels();
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
