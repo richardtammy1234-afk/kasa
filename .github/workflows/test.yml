@@ -1,0 +1,25 @@
+name: Testler
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - name: Salt okunur kontrolü
+        run: npm test
+      - run: npx playwright install --with-deps chromium
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Yedek sayfası — gerçek Firebase SDK + yerel emülatör testi
+        run: npm run test:emulator

@@ -1,0 +1,10 @@
+rules_version = '2';
+// YALNIZCA YEREL TEST EMÜLATÖRÜ İÇİN. Üretime dağıtılmaz.
+// Uygulamanın beklediği erişim modeli: her kullanıcı yalnızca kendi users/{uid}/... verisine erişir.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{uid}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}
