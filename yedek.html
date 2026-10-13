@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#5b50e8">
+<title>Kasa — Yedek</title>
+<style>
+/* Tek sütun, Kasa uygulamasının renkleriyle; telefon öncelikli */
+:root{--bg:#ffffff;--bg2:#f4f4f8;--txt:#0f0f12;--txt2:#6b6b7a;--bdr:rgba(0,0,0,.12);--acc:#5b50e8;--ok:#15803d;--okbg:#dcfce7;--wr:#92400e;--wrbg:#fef3c7;--er:#b91c1c;--erbg:#fee2e2;}
+@media(prefers-color-scheme:dark){:root{--bg:#0f0f12;--bg2:#1a1a20;--txt:#f0f0f5;--txt2:#8f8fa0;--bdr:rgba(255,255,255,.14);--ok:#86efac;--okbg:#0f2e1a;--wr:#fcd34d;--wrbg:#3d2f00;--er:#fca5a5;--erbg:#3d0000;color-scheme:dark;}}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif;background:var(--bg);color:var(--txt);line-height:1.5;padding:calc(env(safe-area-inset-top,0px) + 24px) 16px calc(env(safe-area-inset-bottom,0px) + 32px);}
+main{max-width:480px;margin:0 auto;display:flex;flex-direction:column;gap:16px;}
+h1{font-size:22px;letter-spacing:-.3px;}
+p{font-size:14px;color:var(--txt2);}
+.card{background:var(--bg2);border:.5px solid var(--bdr);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px;}
+button,.filebtn{font:inherit;font-size:16px;font-weight:600;border:none;border-radius:12px;padding:14px 16px;cursor:pointer;width:100%;text-align:center;}
+.primary{background:var(--acc);color:#fff;}
+.secondary{background:transparent;color:var(--txt);border:.5px solid var(--bdr);}
+button:disabled{opacity:.55;cursor:default;}
+button:focus-visible,.filebtn:focus-within{outline:2px solid var(--acc);outline-offset:2px;}
+.who{font-size:13px;color:var(--txt2);}
+.msg{font-size:14px;border-radius:10px;padding:10px 12px;}
+.msg.ok{background:var(--okbg);color:var(--ok);}
+.msg.wr{background:var(--wrbg);color:var(--wr);}
+.msg.er{background:var(--erbg);color:var(--er);}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+td{padding:6px 0;border-bottom:.5px solid var(--bdr);vertical-align:top;}
+td:last-child{text-align:right;font-variant-numeric:tabular-nums;font-weight:600;padding-left:12px;}
+tr:last-child td{border-bottom:none;}
+.filebtn{display:block;text-decoration:none;}
+.hash{font-family:ui-monospace,Menlo,monospace;font-size:11px;word-break:break-all;color:var(--txt2);}
+ul{font-size:13px;color:var(--txt2);padding-left:18px;display:flex;flex-direction:column;gap:4px;}
+[hidden]{display:none!important;}
+</style>
+</head>
+<body>
+<main>
+  <div>
+    <h1>Kasa yedeği</h1>
+    <p>Kartlarını ve işlemlerini tek bir dosyaya indirir. Bu sayfa verilerini <b>yalnızca okur</b>; hiçbir kaydı değiştirmez veya silmez. Dosya doğrudan bu cihaza iner, başka hiçbir yere gönderilmez.</p>
+  </div>
+
+  <div class="card" id="box-login" hidden>
+    <p>Kasa'da kullandığın Google hesabıyla giriş yap.</p>
+    <button class="primary" id="btn-login">Google ile giriş yap</button>
+  </div>
+
+  <div class="card" id="box-backup" hidden>
+    <div class="who" id="who"></div>
+    <button class="primary" id="btn-backup">Yedeği indir</button>
+    <div class="msg" id="msg" hidden></div>
+    <table id="report" hidden><tbody></tbody></table>
+    <a class="filebtn secondary" id="dl-again" hidden>Dosya inmediyse buraya dokun: yeniden kaydet</a>
+    <div class="hash" id="hash" hidden></div>
+  </div>
+
+  <div class="card" id="box-verify" hidden>
+    <p><b>İndirdiğin dosyayı doğrula</b> (isteğe bağlı): dosyayı seç; sayfa dosyayı bu cihazda açıp şu anki kayıtlarınla tek tek karşılaştırır.</p>
+    <label class="filebtn secondary">Dosyayı seç ve doğrula<input type="file" id="verify-file" accept="application/json,.json" hidden></label>
+    <div class="msg" id="vmsg" hidden></div>
+    <table id="vreport" hidden><tbody></tbody></table>
+  </div>
+
+  <div class="msg er" id="expired" hidden>Bu geçici yedek sayfasının süresi doldu. Yedeği Kasa uygulamasındaki Ayarlar → Veri Yönetimi bölümünden alabilirsin.</div>
+
+  <ul>
+    <li>Dosya; tüm kartları (ad, tür, renk, limit, ekstre ve son ödeme günü), tüm işlemleri ve kayıt kimliklerini içerir.</li>
+    <li>Dosyayı iCloud Drive veya kendi bilgisayarın gibi yalnızca senin erişebildiğin bir yere kaydet. Kimseyle paylaşma.</li>
+    <li>Bu sayfa geçicidir; yedeğini aldıktan sonra kaldırılacaktır.</li>
+  </ul>
+</main>
+
+<script type="module">
+// SALT OKUNUR: Firestore'dan yalnızca getDocs/collection/getFirestore içe aktarılır. Yazma işlevi yoktur.
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js';
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
+import { getFirestore, collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
+
+// Bu tarihten sonra sayfa çalışmaz (geçici araç)
+const EXPIRES='2026-11-30';
+
+// Kasa'nın kendi (herkese açık) web yapılandırması — index.html ile aynı proje
+const app=initializeApp({
+  apiKey:"AIzaSyB0CHxGzazi7pJVOqkaQ5lfCHizPJh7DHE",
+  authDomain:"kasa-18dce.firebaseapp.com",
+  projectId:"kasa-18dce",
+  storageBucket:"kasa-18dce.firebasestorage.app",
+  messagingSenderId:"667965081639",
+  appId:"1:667965081639:web:92ff192004f1c1b2666602"
+});
+const auth=getAuth(app),db=getFirestore(app);
+const $=id=>document.getElementById(id);
+const TXF=['id','date','amount','description','category','cardId'];
+const CF=['id','name','type','color','limit','statementDay','dueDay'];
+
+const localNow=()=>{const d=new Date();const p=n=>String(n).padStart(2,'0');return`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;};
+if(localNow()>EXPIRES){$('expired').hidden=false;throw new Error('expired');}
+
+const stable=v=>JSON.stringify(v,(k,x)=>x&&typeof x==='object'&&!Array.isArray(x)?Object.fromEntries(Object.keys(x).sort().map(y=>[y,x[y]])):x);
+const sha256=async s=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)))].map(b=>b.toString(16).padStart(2,'0')).join('');
+const show=(el,cls,text)=>{el.className='msg '+cls;el.textContent=text;el.hidden=false;};
+const table=(el,rows)=>{const tb=el.querySelector('tbody');tb.textContent='';for(const [k,v] of rows){const tr=document.createElement('tr');const a=document.createElement('td');const b=document.createElement('td');a.textContent=k;b.textContent=v;tr.append(a,b);tb.append(tr);}el.hidden=false;};
+
+// Sunucudan oku (önbellekten gelen sonuç kabul edilmez)
+const read=async(uid,c)=>{
+  const s=await getDocs(collection(db,`users/${uid}/${c}`));
+  if(s.metadata.fromCache)throw new Error('Sunucuya ulaşılamadı. İnternet bağlantını kontrol edip tekrar dene.');
+  return s.docs.map(d=>({docId:d.id,data:d.data()}));
+};
+// İki ardışık okuma birebir aynı olana kadar (en çok 3 deneme)
+const readAll=async uid=>{
+  for(let i=0;i<3;i++){
+    const [c1,t1]=await Promise.all([read(uid,'cards'),read(uid,'txs')]);
+    const [c2,t2]=await Promise.all([read(uid,'cards'),read(uid,'txs')]);
+    if(stable(c1)===stable(c2)&&stable(t1)===stable(t2))return {cards:c1,txs:t1};
+  }
+  throw new Error('Kayıtlar okuma sırasında değişti (başka bir cihazda işlem mi giriliyor?). Biraz sonra tekrar dene.');
+};
+// Belge kimliği veri içindeki id'den farklıysa _docId olarak saklanır
+const pack=rows=>rows.map(r=>r.data.id===r.docId?r.data:{...r.data,_docId:r.docId});
+const keyOf=r=>r._docId||r.id;
+
+const saveFile=async(name,json)=>{
+  const blob=new Blob([json],{type:'application/json'});
+  // Otomatik indirme engellenirse kullanıcı bu bağlantıya dokunarak kaydeder
+  const again=$('dl-again');if(again.href)URL.revokeObjectURL(again.href);
+  again.href=URL.createObjectURL(blob);again.download=name;again.hidden=false;
+  try{
+    const file=new File([blob],name,{type:'application/json'});
+    if(/iPhone|iPad|iPod/.test(navigator.userAgent)&&navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:name});return;}
+  }catch(e){if(e?.name==='AbortError')throw new Error('Kaydetme iptal edildi. Tekrar dene ve "Dosyalara Kaydet"i seç.');}
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},3000);
+};
+
+$('btn-login').onclick=async()=>{try{await signInWithPopup(auth,new GoogleAuthProvider());}catch(e){alert('Giriş yapılamadı: '+e.message);}};
+
+// Oturum kapanır veya hesap değişirse önceki sonuçlar ve indirilebilir dosya hemen silinir
+let shownUid=null;
+const clearResults=()=>{
+  for(const id of ['msg','report','hash','vmsg','vreport','dl-again'])$(id).hidden=true;
+  for(const id of ['report','vreport'])$(id).querySelector('tbody').textContent='';
+  const a=$('dl-again');if(a.href){URL.revokeObjectURL(a.href);a.removeAttribute('href');}
+};
+onAuthStateChanged(auth,user=>{
+  if((user?.uid||null)!==shownUid){clearResults();shownUid=user?.uid||null;}
+  $('box-login').hidden=!!user;$('box-backup').hidden=!user;$('box-verify').hidden=!user;
+  if(user)$('who').textContent=`Giriş yapan: ${user.email||user.displayName||'Google hesabı'}`;
+});
+
+$('btn-backup').onclick=async()=>{
+  const btn=$('btn-backup'),msg=$('msg');
+  if(!auth.currentUser){clearResults();return;}
+  btn.disabled=true;show(msg,'wr','Kayıtlar okunuyor…');$('report').hidden=true;$('hash').hidden=true;
+  try{
+    const uid=auth.currentUser.uid;
+    const {cards:cr,txs:tr}=await readAll(uid);
+    const body={cards:pack(cr),txs:pack(tr)};
+    const hash=await sha256(stable(body));
+    const exportedAt=new Date().toISOString();
+    const file={app:'kasa',version:1,source:'yedek-sayfasi',projectId:app.options.projectId,exportedAt,counts:{cards:cr.length,txs:tr.length},sha256:hash,...body};
+    const json=JSON.stringify(file,null,1);
+    // Dosya geri okunup içeriği kontrol edilir
+    const back=JSON.parse(json);
+    const roundTrip=stable({cards:back.cards,txs:back.txs})===stable(body);
+    const dup=a=>a.length-new Set(a).size;
+    const cardIds=new Set(cr.map(r=>r.docId));
+    const extra=[...cr.map(r=>Object.keys(r.data).filter(k=>!CF.includes(k))),...tr.map(r=>Object.keys(r.data).filter(k=>!TXF.includes(k)))].filter(a=>a.length).length;
+    const missTx=tr.filter(r=>TXF.some(k=>!(k in r.data))).length;
+    const missCard=cr.filter(r=>!('name' in r.data)||!('id' in r.data)).length;
+    const rows=[
+      ['Kart',cr.length],
+      ['İşlem',tr.length],
+      ['Ayarları dolu kart (limit / ekstre / son ödeme)',cr.filter(r=>r.data.limit||r.data.statementDay||r.data.dueDay).length],
+      ['Yinelenen kimlik',dup(cr.map(r=>r.docId))+dup(tr.map(r=>r.docId))],
+      ['Kimliği uyuşmayan kayıt',[...cr,...tr].filter(r=>r.data.id!==r.docId).length],
+      ['Eksik alanlı işlem / kart',`${missTx} / ${missCard}`],
+      ['Bilinmeyen ek alanlı kayıt',extra],
+      ['Silinmiş karta bağlı işlem (bilgi)',tr.filter(r=>!cardIds.has(r.data.cardId)).length],
+      ['Dosya geri okundu, içerik birebir aynı',roundTrip?'Evet':'HAYIR'],
+    ];
+    if(!roundTrip)throw new Error('Dosya oluşturulurken içerik doğrulanamadı; dosya indirilmedi.');
+    const d=new Date(),p2=n=>String(n).padStart(2,'0');
+    const name=`kasa-yedek-${localNow()}-${p2(d.getHours())}-${p2(d.getMinutes())}.json`;
+    await saveFile(name,json);
+    table($('report'),rows);
+    $('hash').textContent='Dosya parmak izi (SHA-256): '+hash;$('hash').hidden=false;
+    const warn=dup(cr.map(r=>r.docId))+dup(tr.map(r=>r.docId))+missTx+missCard;
+    show(msg,warn?'wr':'ok',warn?`Yedek indirildi (${name}), ancak tabloda kontrol edilmesi gereken satırlar var.`:`Yedek indirildi: ${name} — ${cr.length} kart, ${tr.length} işlem.`);
+  }catch(e){show(msg,'er','Yedek alınamadı: '+e.message);}
+  finally{btn.disabled=false;}
+};
+
+// İndirilen dosyayı şu anki kayıtlarla tek tek karşılaştır (dosya cihazdan çıkmaz)
+$('verify-file').onchange=async e=>{
+  const f=e.target.files?.[0];e.target.value='';if(!f||!auth.currentUser)return;
+  const vmsg=$('vmsg');show(vmsg,'wr','Karşılaştırılıyor…');$('vreport').hidden=true;
+  try{
+    let file;try{file=JSON.parse(await f.text());}catch{throw new Error('Dosya okunamadı.');}
+    if(file?.app!=='kasa'||!Array.isArray(file.cards)||!Array.isArray(file.txs))throw new Error('Bu dosya bir Kasa yedeği değil.');
+    const hashOk=file.sha256?file.sha256===await sha256(stable({cards:file.cards,txs:file.txs})):null;
+    const {cards:cr,txs:tr}=await readAll(auth.currentUser.uid);
+    const cmp=(live,saved)=>{
+      const m=new Map(saved.map(x=>[keyOf(x),x]));
+      let missing=0,diff=0;
+      for(const r of live){const s=m.get(r.docId);if(!s){missing++;continue;}const {_docId,...rest}=s;if(stable(rest)!==stable(r.data))diff++;}
+      const liveIds=new Set(live.map(r=>r.docId));
+      return {missing,diff,onlyInFile:saved.filter(x=>!liveIds.has(keyOf(x))).length};
+    };
+    const c=cmp(cr,file.cards),t=cmp(tr,file.txs);
+    table($('vreport'),[
+      ['Dosyadaki kart / işlem',`${file.cards.length} / ${file.txs.length}`],
+      ['Şu anki kart / işlem',`${cr.length} / ${tr.length}`],
+      ['Dosyada eksik kart / işlem',`${c.missing} / ${t.missing}`],
+      ['Alanları farklı kart / işlem',`${c.diff} / ${t.diff}`],
+      ['Yalnızca dosyada olan kart / işlem',`${c.onlyInFile} / ${t.onlyInFile}`],
+      ['Parmak izi',hashOk===null?'dosyada yok':hashOk?'tutuyor':'TUTMUYOR'],
+    ]);
+    const ok=!c.missing&&!c.diff&&!t.missing&&!t.diff&&hashOk!==false;
+    show(vmsg,ok?'ok':'wr',ok?'✓ Dosya, şu anki tüm kartları (tüm ayarlarıyla), tüm işlemleri ve kimlikleri birebir içeriyor.':'Dosya şu anki kayıtlarla tam eşleşmiyor. Yedek aldıktan sonra kayıt eklendiyse veya değiştirildiyse bu normaldir; değilse yeni bir yedek al.');
+  }catch(err){show(vmsg,'er','Doğrulanamadı: '+err.message);}
+};
+</script>
+</body>
+</html>
