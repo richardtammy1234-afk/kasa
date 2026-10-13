@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#EEEEF0" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0D0D0F" media="(prefers-color-scheme: dark)">
 <title>Kasa — Harcama Takibi</title>
-<link rel="stylesheet" href="styles.css?v=4">
+<link rel="stylesheet" href="styles.css?v=5">
 </head>
 <body>
 
@@ -32,6 +32,9 @@
   <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></symbol>
   <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
   <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 20V9M7 14l5-5 5 5M5 4h14"/></symbol>
+  <symbol id="i-filter" viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></symbol>
   <symbol id="i-empty" viewBox="0 0 24 24"><path d="M4 7h16l-1.5 12a2 2 0 0 1-2 1.8h-9a2 2 0 0 1-2-1.8z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/></symbol>
 </svg>
 
@@ -103,12 +106,15 @@
       <div class="bar3"><span></span><div class="bar3-t">İşlemler</div><span></span></div>
       <div class="sum" id="txs-sum"></div>
       <div class="srch">
-        <div class="sbox"><svg class="i"><use href="#i-search"/></svg><input type="text" id="s-q" placeholder="İşlem ara" oninput="renderTxs()" enterkeyhint="search"></div>
-        <div class="mbox"><input type="month" id="s-mo" onchange="renderTxs()" aria-label="Ay"></div>
+        <div class="sbox"><svg class="i"><use href="#i-search"/></svg><input type="search" id="s-q" placeholder="İşlem, kart veya kategori ara" oninput="renderTxs()" enterkeyhint="search" autocomplete="off"></div>
+        <button class="fbtn" id="f-btn" onclick="window.toggleFlt()" aria-expanded="false" aria-controls="f-panel" aria-label="Filtreler"><svg class="i"><use href="#i-filter"/></svg><span class="fbdg" id="f-bdg" hidden></span></button>
       </div>
-      <div class="flt">
-        <div class="chips" id="s-crd-chips"></div>
-        <div class="chips" id="s-cat-chips"></div>
+      <div class="actf" id="act-f"></div>
+      <div class="fpanel" id="f-panel" hidden>
+        <div class="fsec"><div class="fsec-l">Dönem</div><div class="chips" id="s-per-chips"></div>
+          <label class="mpick"><span>Başka bir ay</span><input type="month" id="s-mo" onchange="window.setPer('mo')" aria-label="Ay"></label></div>
+        <div class="fsec"><div class="fsec-l">Kart</div><div class="chips" id="s-crd-chips"></div></div>
+        <div class="fsec"><div class="fsec-l">Kategori</div><div class="chips" id="s-cat-chips"></div></div>
       </div>
       <div id="txs-wrap"></div>
     </div>
@@ -234,6 +240,31 @@
   </div>
 </div>
 
+<!-- İŞLEM AYRINTI SAYFASI -->
+<div class="ovl" id="tx-ovl" onclick="closeOvl('tx-ovl',event)">
+  <div class="sht" role="dialog" aria-modal="true" aria-labelledby="txd-desc">
+    <div class="shdl"></div>
+    <div class="txd-h">
+      <div class="ico lg" id="txd-ico"></div>
+      <div class="txd-desc" id="txd-desc"></div>
+      <div class="txd-amt num" id="txd-amt"></div>
+      <span class="plan" id="txd-plan" hidden>Planlanan</span>
+    </div>
+    <div class="txd-rows" id="txd-rows"></div>
+    <div id="txd-act"><button class="btn btn-o btn1" id="txd-del" onclick="window.askDelTx()"><svg class="i"><use href="#i-trash"/></svg>İşlemi sil</button></div>
+    <div class="dcf" id="txd-cfm" hidden>
+      <div class="dcf-t">Bu işlem silinsin mi?</div>
+      <div class="dcf-s">Sildikten sonra birkaç saniye içinde geri alabilirsin.</div>
+      <div class="sbt">
+        <button class="btn2" id="txd-no" onclick="window.cancelDelTx()">Vazgeç</button>
+        <button class="btnd" id="txd-yes" onclick="window.confirmDelTx()">Evet, sil</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden><span id="toast-t"></span><button id="toast-undo" onclick="window.undoDel()">Geri al</button></div>
+
 <!-- İŞLEM EKLE SAYFASI -->
 <div class="ovl" id="addtx-ovl" onclick="closeOvl('addtx-ovl',event)">
   <div class="sht">
@@ -322,14 +353,19 @@ const DEFAULT_CARDS=[
   {id:'c7',name:'Enpara Banka',type:'Banka',color:'#ec4899',limit:0,statementDay:null,dueDay:null},
 ];
 
-let txs=[],cards=[],curMonth=new Date(),editCardId=null,chts={},sCrd=null,sCat=null;
+let txs=[],cards=[],curMonth=new Date(),editCardId=null,chts={},sCrd=null,sCat=null,sPer=localDate().slice(0,7);
 let currentUser=null,unsubTxs=null,unsubCards=null,txsLoaded=false,cardsLoaded=false;
 
 const fmt=n=>'₺'+parseFloat(n).toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2});
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,5);
 const mKey=d=>{const dt=new Date(d);return`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`;};
 const curKey=()=>`${curMonth.getFullYear()}-${String(curMonth.getMonth()+1).padStart(2,'0')}`;
-const mTxs=k=>txs.filter(t=>mKey(t.date)===k);
+// Silinmesi bekleyen (geri alınabilir) işlemler ekranlarda gösterilmez; yedek ve geri yükleme ham listeyi kullanır
+const pendDel=new Map();
+const shownTxs=()=>pendDel.size?txs.filter(t=>!pendDel.has(t.id)):txs;
+const mTxs=k=>shownTxs().filter(t=>mKey(t.date)===k);
+// Bugünden sonraki tarihli işlemler (yalnızca etiket; veri ve hesaplama değişmez)
+const isPlanned=t=>String(t.date)>localDate();
 const getCat=n=>CATS.find(c=>c.n===n)||{n:'Diğer',c:'#8E8A93'};
 const getCard=id=>cards.find(c=>c.id===id)||{name:'?',color:'#888',type:'?'};
 const esc=s=>String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -401,6 +437,7 @@ window.signIn=async()=>{
 window.signOut=async()=>{
   if(!confirm('Çıkış yapmak istiyor musun?'))return;
   if(unsubTxs)unsubTxs();if(unsubCards)unsubCards();
+  flushDel();
   txs=[];cards=[];
   await fbSignOut(auth);
 };
@@ -505,18 +542,17 @@ const cmpText=st=>{
   return`${base} <b>${fmt(Math.abs(d))} ${d>0?'daha fazla':'daha az'}</b>`;
 };
 
-const txItemHTML=(t,del=false)=>{
-  const cat=getCat(t.category);const card=getCard(t.cardId);
+const txItemHTML=(t,inDay=false)=>{
+  const cat=getCat(t.category);const card=getCard(t.cardId);const pl=isPlanned(t);
   const dt=new Date(t.date+'T00:00').toLocaleDateString('tr-TR',{day:'numeric',month:'short'});
-  return`<div class="txi">
-    <div class="ico">${initials(t.description)}</div>
-    <div class="txd">
-      <div class="txn">${esc(t.description)}</div>
-      <div class="txm">${del?'':dt+' · '}${cat.n} · <span class="dot" style="background:${card.color}"></span>${esc(card.name)}</div>
-    </div>
-    <div class="txa num">−${fmtSplit(t.amount)}</div>
-    ${del?`<button class="txdl" onclick="window.delTx('${t.id}')" aria-label="Sil">×</button>`:''}
-  </div>`;
+  return`<button class="txi${pl?' pl':''}" data-id="${esc(t.id)}" onclick="window.openTx(this.dataset.id)">
+    <span class="ico">${initials(t.description)}</span>
+    <span class="txd">
+      <span class="txn">${esc(t.description)}</span>
+      <span class="txm">${pl&&!inDay?'<span class="plan">Planlanan</span>':''}${inDay?'':dt+' · '}${esc(cat.n)} · <span class="dot" style="background:${card.color}"></span>${esc(card.name)}</span>
+    </span>
+    <span class="txa num">−${fmtSplit(t.amount)}</span>
+  </button>`;
 };
 
 // Küçük çizgi grafik (widget)
@@ -585,34 +621,96 @@ const dayTitle=k=>{
   if(k===today)return'Bugün';if(k===yest)return'Dün';
   return new Date(k+'T00:00').toLocaleDateString('tr-TR',{day:'numeric',month:'long',weekday:'long'});
 };
+// Arama: büyük/küçük harf ve Türkçe karakterden bağımsız (NETFLIX = netflix, İŞ = is)
+const fold=x=>String(x??'').toLocaleLowerCase('tr-TR').replace(/ı/g,'i').normalize('NFD').replace(/[̀-ͯ]/g,'');
+const perLabel=p=>p==='plan'?'Planlanan':!p?'Tüm zamanlar':p===localDate().slice(0,7)?'Bu ay':new Date(p+'-01T00:00').toLocaleDateString('tr-TR',{month:'long',year:'numeric'});
+const perMatch=(t,p)=>p==='plan'?isPlanned(t):!p||mKey(t.date)===p;
+const txMatch=(t,q)=>!q||fold(t.description).includes(q)||fold(getCat(t.category).n).includes(q)||fold(getCard(t.cardId).name).includes(q);
+
+const renderFilters=()=>{
+  const cur=localDate().slice(0,7);const prev=keyOf(new Date(new Date().getFullYear(),new Date().getMonth()-1,1));
+  const hasPlan=shownTxs().some(isPlanned);
+  const pers=[[cur,'Bu ay'],[prev,perLabel(prev)],['','Tümü']];if(hasPlan)pers.push(['plan','Planlanan']);
+  if(sPer&&sPer!=='plan'&&!pers.some(x=>x[0]===sPer))pers.push([sPer,perLabel(sPer)]);
+  document.getElementById('s-per-chips').innerHTML=pers.map(([v,l])=>`<button class="ch${sPer===v?' on':''}" data-per="${v}" onclick="window.setPer('${v}')">${esc(l)}</button>`).join('');
+  document.getElementById('s-mo').value=sPer&&sPer!=='plan'?sPer:'';
+  document.getElementById('s-crd-chips').innerHTML=`<button class="ch${!sCrd?' on':''}" data-cid="" onclick="window.setCrdF(this,'')">Tümü</button>`+cards.map(c=>`<button class="ch${sCrd===c.id?' on':''}" data-cid="${esc(c.id)}" onclick="window.setCrdF(this,this.dataset.cid)"><span class="dot" style="background:${c.color}"></span>${esc(c.name)}</button>`).join('');
+  document.getElementById('s-cat-chips').innerHTML=`<button class="ch${!sCat?' on':''}" data-cat="" onclick="window.setCatF(this,'')">Tümü</button>`+CATS.map(c=>`<button class="ch${sCat===c.n?' on':''}" data-cat="${esc(c.n)}" onclick="window.setCatF(this,this.dataset.cat)">${esc(c.n)}</button>`).join('');
+  // Etkin filtreler tek satırda: dönem her zaman görünür, kart/kategori kaldırılabilir
+  const pills=[`<button class="pill per" onclick="window.toggleFlt(true)"><svg class="i"><use href="#i-cal"/></svg>${esc(perLabel(sPer))}</button>`];
+  if(sCrd){const c=getCard(sCrd);pills.push(`<button class="pill" onclick="window.setCrdF(null,'')" aria-label="${esc(c.name)} filtresini kaldır"><span class="dot" style="background:${c.color}"></span>${esc(c.name)}<svg class="i"><use href="#i-x"/></svg></button>`);}
+  if(sCat)pills.push(`<button class="pill" onclick="window.setCatF(null,'')" aria-label="${esc(sCat)} filtresini kaldır">${esc(sCat)}<svg class="i"><use href="#i-x"/></svg></button>`);
+  if(sCrd||sCat||sPer!==cur)pills.push(`<button class="pill clr" onclick="window.clearFlt()">Temizle</button>`);
+  document.getElementById('act-f').innerHTML=pills.join('');
+  const n=(sCrd?1:0)+(sCat?1:0)+(sPer!==cur?1:0);const bd=document.getElementById('f-bdg');bd.hidden=!n;bd.textContent=n;
+};
+
 const renderTxs=()=>{
-  const cc=document.getElementById('s-crd-chips');
-  if(!cc.dataset.b){cc.innerHTML='<div class="ch on" data-cid="" onclick="window.setCrdF(this,\'\')">Tüm kartlar</div>'+cards.map(c=>`<div class="ch" data-cid="${c.id}" onclick="window.setCrdF(this,'${c.id}')">${esc(c.name)}</div>`).join('');cc.dataset.b='1';}
-  const catc=document.getElementById('s-cat-chips');
-  if(!catc.dataset.b){catc.innerHTML='<div class="ch on" data-cat="" onclick="window.setCatF(this,\'\')">Tüm kategoriler</div>'+CATS.map(c=>`<div class="ch" data-cat="${c.n}" onclick="window.setCatF(this,'${c.n}')">${c.n}</div>`).join('');catc.dataset.b='1';}
-  const q=document.getElementById('s-q').value.toLowerCase();
-  const mo=document.getElementById('s-mo').value;
-  let f=[...txs];
-  if(q)f=f.filter(t=>t.description.toLowerCase().includes(q));
-  if(sCrd)f=f.filter(t=>t.cardId===sCrd);
-  if(sCat)f=f.filter(t=>t.category===sCat);
-  if(mo)f=f.filter(t=>mKey(t.date)===mo);
-  f.sort((a,b)=>String(b.date).localeCompare(String(a.date)));
-  const scope=mo?new Date(mo+'-01T00:00').toLocaleDateString('tr-TR',{month:'long',year:'numeric'}):'Tüm zamanlar';
-  document.getElementById('txs-sum').innerHTML=`<div class="sum-l">${esc(scope)}${q||sCrd||sCat?' · filtreli':''}</div><div class="big md num">${fmtSplit(sumOf(f))}</div><div class="sum-s">${f.length} işlem</div>`;
-  if(!f.length){document.getElementById('txs-wrap').innerHTML=`<div class="emp"><svg class="i"><use href="#i-search"/></svg>İşlem bulunamadı</div>`;return;}
+  renderFilters();
+  const q=fold(document.getElementById('s-q').value.trim());
+  const base=shownTxs().filter(t=>(!sCrd||t.cardId===sCrd)&&(!sCat||t.category===sCat)&&txMatch(t,q));
+  const f=base.filter(t=>perMatch(t,sPer)).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  const pl=f.filter(isPlanned);
+  document.getElementById('txs-sum').innerHTML=`<div class="sum-l">${esc(perLabel(sPer))}${q||sCrd||sCat?' · filtreli':''}</div><div class="big md num">${fmtSplit(sumOf(f))}</div><div class="sum-s">${f.length} işlem${pl.length&&sPer!=='plan'?` · ${pl.length} planlanan dahil (${fmt(sumOf(pl))})`:''}</div>`;
+  const wrap=document.getElementById('txs-wrap');
+  if(!f.length){
+    // Aranan kayıt başka bir dönemdeyse (ör. gelecek ay planlanan) gizli kalmasın
+    const other=sPer?base.length:0;
+    wrap.innerHTML=`<div class="emp"><svg class="i"><use href="#i-search"/></svg>${esc(perLabel(sPer))} için işlem bulunamadı${other?`<button class="btn2 sm" onclick="window.setPer('')">Tüm zamanlarda ${other} sonuç göster</button>`:''}</div>`;return;}
   const groups=[];let g=null;
-  for(const t of f){if(!g||g.k!==t.date){g={k:t.date,items:[]};groups.push(g);}g.items.push(t);}
-  document.getElementById('txs-wrap').innerHTML=`<div class="days">${groups.map(g=>`
-    <div><div class="day"><span class="day-n">${dayTitle(g.k)}</span><span class="day-t num">−${fmt(sumOf(g.items))}</span></div>
-    <div class="txw">${g.items.map(t=>txItemHTML(t,true)).join('')}</div></div>`).join('')}</div>`;
+  for(const t of f){if(!g||g.k!==t.date){g={k:t.date,pl:isPlanned(t),items:[]};groups.push(g);}g.items.push(t);}
+  const dayHTML=g=>`<div><div class="day"><span class="day-n">${dayTitle(g.k)}</span><span class="day-t num">−${fmt(sumOf(g.items))}</span></div>
+    <div class="txw">${g.items.map(t=>txItemHTML(t,true)).join('')}</div></div>`;
+  const fut=groups.filter(x=>x.pl),past=groups.filter(x=>!x.pl);
+  wrap.innerHTML=`<div class="days">${fut.length?`<div class="sec-l">Planlanan · ${fut.reduce((a,x)=>a+x.items.length,0)} işlem</div>${fut.map(dayHTML).join('')}${past.length?'<div class="sec-l">Geçmiş</div>':''}`:''}${past.map(dayHTML).join('')}</div>`;
 };
 
 // HTML'deki oninput/onchange çağrıları için (modül içindeki fonksiyonlar global değildir)
 window.renderTxs=renderTxs;
-window.setCrdF=(el,id)=>{sCrd=id||null;document.querySelectorAll('#s-crd-chips .ch').forEach(c=>c.classList.toggle('on',c.dataset.cid===id));renderTxs();};
-window.setCatF=(el,n)=>{sCat=n||null;document.querySelectorAll('#s-cat-chips .ch').forEach(c=>c.classList.toggle('on',c.dataset.cat===n));renderTxs();};
-window.delTx=async id=>{if(!confirm('Bu işlemi silmek istiyor musun?'))return;await deleteTxRemote(id);};
+window.toggleFlt=force=>{const p=document.getElementById('f-panel');const open=force===true?true:p.hidden;p.hidden=!open;document.getElementById('f-btn').setAttribute('aria-expanded',open);document.getElementById('f-btn').classList.toggle('on',open);};
+window.setPer=v=>{sPer=v==='mo'?document.getElementById('s-mo').value:v;renderTxs();};
+window.setCrdF=(el,id)=>{sCrd=id||null;renderTxs();};
+window.setCatF=(el,n)=>{sCat=n||null;renderTxs();};
+window.clearFlt=()=>{sCrd=null;sCat=null;sPer=localDate().slice(0,7);renderTxs();};
+
+// --- işlem ayrıntısı ve geri alınabilir silme ---
+// Silme hemen yapılmaz: kayıt ekrandan kalkar, UNDO_MS boyunca "Geri al" sunulur, süre dolunca silinir.
+const UNDO_MS=6000;
+let openTxId=null,toastT=null;
+const rerender=()=>{const av=document.querySelector('.v.on')?.id;if(av==='v-home')renderHome();if(av==='v-txs')renderTxs();if(av==='v-cards')renderCards();if(av==='v-trend')renderTrend();};
+window.openTx=id=>{
+  const t=txs.find(x=>x.id===id);if(!t)return;openTxId=id;
+  const cat=getCat(t.category),card=getCard(t.cardId),pl=isPlanned(t);
+  document.getElementById('txd-ico').textContent=initials(t.description,2);
+  document.getElementById('txd-desc').textContent=t.description;
+  document.getElementById('txd-amt').innerHTML='−'+fmtSplit(t.amount);
+  document.getElementById('txd-plan').hidden=!pl;
+  const row=(k,v)=>`<div class="txd-r"><span>${k}</span><b>${v}</b></div>`;
+  document.getElementById('txd-rows').innerHTML=
+    row('Tarih',esc(new Date(t.date+'T00:00').toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric',weekday:'long'})))+
+    row('Kategori',esc(cat.n))+row('Kart',`<span class="dot" style="background:${card.color}"></span>${esc(card.name)}`);
+  document.getElementById('txd-act').hidden=false;document.getElementById('txd-cfm').hidden=true;
+  document.getElementById('tx-ovl').classList.add('on');
+};
+window.askDelTx=()=>{document.getElementById('txd-act').hidden=true;document.getElementById('txd-cfm').hidden=false;document.getElementById('txd-no').focus();};
+window.cancelDelTx=()=>{document.getElementById('txd-act').hidden=false;document.getElementById('txd-cfm').hidden=true;};
+const commitDel=id=>{const p=pendDel.get(id);if(!p)return;clearTimeout(p.timer);pendDel.delete(id);deleteTxRemote(id).catch(e=>{setSyncStatus('Silinemedi: '+(e?.message||e));rerender();});};
+function flushDel(){[...pendDel.keys()].forEach(commitDel);hideToast();}
+const hideToast=()=>{clearTimeout(toastT);document.getElementById('toast').hidden=true;};
+window.confirmDelTx=()=>{
+  const id=openTxId;const t=txs.find(x=>x.id===id);
+  document.getElementById('tx-ovl').classList.remove('on');openTxId=null;
+  if(!t||pendDel.has(id))return;
+  // Önceki bekleyen silmeler hemen tamamlanır; geri al yalnızca son silme için geçerlidir
+  flushDel();
+  pendDel.set(id,{timer:setTimeout(()=>{commitDel(id);hideToast();},UNDO_MS)});
+  document.getElementById('toast-t').textContent=`“${t.description}” silindi`;
+  document.getElementById('toast').hidden=false;
+  rerender();
+};
+window.undoDel=()=>{for(const [id,p] of pendDel){clearTimeout(p.timer);pendDel.delete(id);}hideToast();rerender();};
+// Uygulama arka plana alınırsa onaylanmış silme bekletilmeden tamamlanır
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flushDel();});
 
 const renderCards=()=>{
   updateMLabels();renderAlerts('cards-alrts');
@@ -801,7 +899,6 @@ const rebuildSelects=()=>{
   ['f-crd','i-crd'].forEach(id=>{const el=document.getElementById(id);if(el){const v=el.value;el.innerHTML=cOpts;if(v&&cards.some(c=>c.id===v))el.value=v;else if(id==='f-crd'){const lc=getLastCard();if(lc)el.value=lc;}}});
   const catOpts=CATS.map(c=>`<option value="${c.n}">${c.n}</option>`).join('');
   const fc=document.getElementById('f-cat');if(fc){const v=fc.value;fc.innerHTML=catOpts;if(v)fc.value=v;}
-  const cc=document.getElementById('s-crd-chips');if(cc){cc.dataset.b='';cc.innerHTML='';}
 };
 
 const renderTrend=()=>{
@@ -937,7 +1034,6 @@ window.restoreBackup=async input=>{
   }catch(e){fb.textContent='Geri yükleme hatası: '+(e?.message||e);}
 };
 
-document.getElementById('s-mo').value=localDate().slice(0,7);
 updateMLabels();
 </script>
 </body>
