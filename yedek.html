@@ -9,16 +9,17 @@
 <title>Kasa — Yedek</title>
 <style>
 /* Tek sütun, Kasa uygulamasının renkleriyle; telefon öncelikli */
-:root{--bg:#ffffff;--bg2:#f4f4f8;--txt:#0f0f12;--txt2:#6b6b7a;--bdr:rgba(0,0,0,.12);--acc:#5b50e8;--ok:#15803d;--okbg:#dcfce7;--wr:#92400e;--wrbg:#fef3c7;--er:#b91c1c;--erbg:#fee2e2;}
-@media(prefers-color-scheme:dark){:root{--bg:#0f0f12;--bg2:#1a1a20;--txt:#f0f0f5;--txt2:#8f8fa0;--bdr:rgba(255,255,255,.14);--ok:#86efac;--okbg:#0f2e1a;--wr:#fcd34d;--wrbg:#3d2f00;--er:#fca5a5;--erbg:#3d0000;color-scheme:dark;}}
+:root{--bg:#EEEEF0;--bg2:#FFFFFF;--txt:#141416;--txt2:#67646D;--bdr:rgba(30,28,34,.08);--acc:#141416;--grad:linear-gradient(140deg,#FFE3D1 0%,#FFCADB 52%,#DCCFFF 100%);--ok:#178A5E;--okbg:#E3F6EC;--wr:#A9670B;--wrbg:#FFF2DC;--er:#D93F48;--erbg:#FDEBEC;}
+@media(prefers-color-scheme:dark){:root{--bg:#111013;--bg2:#1B1A1F;--txt:#F3F1F5;--txt2:#A6A3AD;--bdr:rgba(255,255,255,.08);--acc:#F3F1F5;--grad:linear-gradient(140deg,#3B2B28 0%,#3D2433 52%,#2B2645 100%);--ok:#4CC38A;--okbg:#12291E;--wr:#F5B851;--wrbg:#2E2412;--er:#FF6B72;--erbg:#331618;color-scheme:dark;}}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif;background:var(--bg);color:var(--txt);line-height:1.5;padding:calc(env(safe-area-inset-top,0px) + 24px) 16px calc(env(safe-area-inset-bottom,0px) + 32px);}
 main{max-width:480px;margin:0 auto;display:flex;flex-direction:column;gap:16px;}
-h1{font-size:22px;letter-spacing:-.3px;}
+h1{font-size:30px;font-weight:700;letter-spacing:-.7px;}
+main>div:first-child{background:var(--grad);border-radius:28px;padding:22px;}
 p{font-size:14px;color:var(--txt2);}
-.card{background:var(--bg2);border:.5px solid var(--bdr);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px;}
+.card{background:var(--bg2);border:1px solid var(--bdr);border-radius:22px;padding:18px;box-shadow:0 6px 18px rgba(30,28,34,.05);display:flex;flex-direction:column;gap:10px;}
 button,.filebtn{font:inherit;font-size:16px;font-weight:600;border:none;border-radius:12px;padding:14px 16px;cursor:pointer;width:100%;text-align:center;}
-.primary{background:var(--acc);color:#fff;}
+.primary{background:var(--acc);color:var(--bg);border-radius:999px;}
 .secondary{background:transparent;color:var(--txt);border:.5px solid var(--bdr);}
 button:disabled{opacity:.55;cursor:default;}
 button:focus-visible,.filebtn:focus-within{outline:2px solid var(--acc);outline-offset:2px;}

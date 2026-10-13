@@ -18,7 +18,7 @@ export const serve=root=>new Promise(r=>{
     const p=decodeURIComponent(new URL(req.url,'http://x').pathname);
     const f=path.join(root,p==='/'?'index.html':p);
     if(!f.startsWith(root)||!fs.existsSync(f)||fs.statSync(f).isDirectory()){res.writeHead(404);res.end();return;}
-    res.writeHead(200,{'content-type':f.endsWith('.js')?'text/javascript; charset=utf-8':'text/html; charset=utf-8'});
+    res.writeHead(200,{'content-type':f.endsWith('.js')?'text/javascript; charset=utf-8':f.endsWith('.css')?'text/css; charset=utf-8':'text/html; charset=utf-8'});
     fs.createReadStream(f).pipe(res);
   });
   s.listen(0,'127.0.0.1',()=>r(s));

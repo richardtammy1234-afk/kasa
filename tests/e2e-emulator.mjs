@@ -19,7 +19,7 @@ const server=http.createServer((req,res)=>{
   const p=decodeURIComponent(new URL(req.url,'http://x').pathname);
   const f=path.join(ROOT,p==='/'?'index.html':p);
   if(!f.startsWith(ROOT)||!fs.existsSync(f)||fs.statSync(f).isDirectory()){res.writeHead(404);res.end();return;}
-  res.writeHead(200,{'content-type':f.endsWith('.js')?'text/javascript; charset=utf-8':'text/html; charset=utf-8'});
+  res.writeHead(200,{'content-type':f.endsWith('.js')?'text/javascript; charset=utf-8':f.endsWith('.css')?'text/css; charset=utf-8':'text/html; charset=utf-8'});
   fs.createReadStream(f).pipe(res);
 });
 await new Promise(r=>server.listen(0,'127.0.0.1',r));
