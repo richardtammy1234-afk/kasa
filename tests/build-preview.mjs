@@ -22,6 +22,8 @@ if(!darkM)throw new Error('Koyu tema bloğu bulunamadı');
 css=css.replace(darkM[0],`@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){${darkM[1]}}}\n:root[data-theme="dark"]{${darkM[1]}}`);
 css=css.replace('.app{height:100vh;height:100dvh;','.app{height:100%;');
 css+='\n.demo-bar{flex-shrink:0;margin:calc(var(--safe-top) + 8px) 18px 0;padding:6px 12px;border-radius:999px;background:var(--warn-bg);color:var(--warn);font-size:11px;font-weight:600;text-align:center;}\n.demo-bar+.views .pg{padding-top:14px;}\n';
+// Ana Ekran dosyaları önizlemeye gömülmez
+rep(/<link rel="manifest"[^>]*>\n<link rel="apple-touch-icon"[^>]*>\n<link rel="icon"[^>]*>\n/,'');
 rep(/<link rel="stylesheet" href="styles\.css[^"]*">/,`<style>${css}</style>`);
 rep(/<\/head>\s*<body>/,'');
 rep(/<\/body>\s*<\/html>\s*$/,'');
@@ -88,7 +90,7 @@ const fbSignOut=async()=>{__authCb&&__authCb(null);};
 const an=fs.readFileSync(path.join(ROOT,'analytics.js'),'utf8');
 const anNames=[...an.matchAll(/^export const (\w+)/gm)].map(m=>m[1]);
 rep(/import \* as A from '\.\/analytics\.js[^']*';\n/,`const A=(()=>{\n${an.replace(/^export /gm,'')}\nreturn{${anNames.join(',')}};})();\n`);
-rep(/let QP=null;\nimport\('\.\/quick-parse\.js[^\n]*\n/,`const QP=(()=>{\n${qp}\nreturn{parseQuick,frequentDescriptions};})();\n`);
+rep(/let QP=null;\nconst qpReady=import\('\.\/quick-parse\.js[^\n]*\n/,`const QP=(()=>{\n${qp}\nreturn{parseQuick,frequentDescriptions};})();\nconst qpReady=Promise.resolve();\n`);
 if(/gstatic|firebaseConfig|apiKey/.test(s))throw new Error('Firebase izi kaldı');
 fs.writeFileSync(out,s);
 console.log('Yazıldı:',out,(s.length/1024).toFixed(1)+' KB');
