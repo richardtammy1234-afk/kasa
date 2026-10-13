@@ -139,13 +139,22 @@ const saveFile=async(name,json)=>{
 
 $('btn-login').onclick=async()=>{try{await signInWithPopup(auth,new GoogleAuthProvider());}catch(e){alert('Giriş yapılamadı: '+e.message);}};
 
+// Oturum kapanır veya hesap değişirse önceki sonuçlar ve indirilebilir dosya hemen silinir
+let shownUid=null;
+const clearResults=()=>{
+  for(const id of ['msg','report','hash','vmsg','vreport','dl-again'])$(id).hidden=true;
+  for(const id of ['report','vreport'])$(id).querySelector('tbody').textContent='';
+  const a=$('dl-again');if(a.href){URL.revokeObjectURL(a.href);a.removeAttribute('href');}
+};
 onAuthStateChanged(auth,user=>{
+  if((user?.uid||null)!==shownUid){clearResults();shownUid=user?.uid||null;}
   $('box-login').hidden=!!user;$('box-backup').hidden=!user;$('box-verify').hidden=!user;
   if(user)$('who').textContent=`Giriş yapan: ${user.email||user.displayName||'Google hesabı'}`;
 });
 
 $('btn-backup').onclick=async()=>{
   const btn=$('btn-backup'),msg=$('msg');
+  if(!auth.currentUser){clearResults();return;}
   btn.disabled=true;show(msg,'wr','Kayıtlar okunuyor…');$('report').hidden=true;$('hash').hidden=true;
   try{
     const uid=auth.currentUser.uid;
@@ -188,7 +197,7 @@ $('btn-backup').onclick=async()=>{
 
 // İndirilen dosyayı şu anki kayıtlarla tek tek karşılaştır (dosya cihazdan çıkmaz)
 $('verify-file').onchange=async e=>{
-  const f=e.target.files?.[0];e.target.value='';if(!f)return;
+  const f=e.target.files?.[0];e.target.value='';if(!f||!auth.currentUser)return;
   const vmsg=$('vmsg');show(vmsg,'wr','Karşılaştırılıyor…');$('vreport').hidden=true;
   try{
     let file;try{file=JSON.parse(await f.text());}catch{throw new Error('Dosya okunamadı.');}
