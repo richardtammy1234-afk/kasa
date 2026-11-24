@@ -71,7 +71,8 @@ await step('doğru anahtarla SMS gelir → uygulama onaysız kaydeder, gelen kut
 
 await step('anahtar yenilenince eski anahtar reddedilir',async()=>{
   page.removeAllListeners('dialog');page.on('dialog',d=>d.accept());
-  await page.click('text=Anahtarı yenile');
+  // Yalnızca düğme: kurulum notu da "Anahtarı yenile" sözünü içerdiği için düz metin seçici nota tıklıyordu
+  await page.getByRole('button',{name:'Anahtarı yenile'}).click();
   await waitFor(async()=>{const k=JSON.parse(await page.textContent('#sms-body')).fields.k.stringValue;return k!==key;});
   assert.equal((await shortcut(uid,fields({k:key,b:b64('x')}))).status,403);
 });
