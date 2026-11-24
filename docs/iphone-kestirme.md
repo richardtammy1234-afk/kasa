@@ -1,7 +1,11 @@
 # iPhone'dan hızlı harcama ekleme
 
-İki yol var. İkisi de **hiçbir zaman kendiliğinden kayıt yapmaz**: Kasa, alanları doldurulmuş
-"İşlem ekle" ekranını açar; kaydetmek için her zaman **Devam → Onayla ve Kaydet** gerekir.
+Üç yol var:
+
+- **Yol 1 ve 2** (elle ekleme) **hiçbir zaman kendiliğinden kayıt yapmaz**: Kasa, alanları doldurulmuş
+  "İşlem ekle" ekranını açar; kaydetmek için her zaman **Devam → Onayla ve Kaydet** gerekir.
+- **Yol 3** (banka SMS'i) **otomatiktir**: bankadan harcama SMS'i gelince kayıt onay beklemeden yapılır.
+  Kurulumu en altta.
 
 ## Hızlı ekleme bağlantısı
 
@@ -79,3 +83,81 @@ iOS yalnızca Apple tarafından **imzalanmış** kestirme dosyalarını içe akt
 iCloud paylaşım bağlantısıyla yapılır. Bu ortamda kestirme dosyası imzalanamaz ve iPhone'da denenemez.
 Bu yüzden çalıştığı doğrulanmamış bir dosya verilmedi. Kestirmeyi bir kez kurduktan sonra
 **Paylaş → iCloud Bağlantısını Kopyala** ile kendi doğrulanmış bağlantını oluşturabilirsin.
+
+## Yol 3 — Banka SMS'inden otomatik kayıt
+
+Bankadan "…kartınızla … TL harcama yapılmıştır" gibi bir SMS gelince iPhone'daki bir **otomasyon** SMS'i Kasa'ya
+gönderir. Kasa (herhangi bir cihazda açıldığında) SMS'ten tutarı, iş yerini, kartı ve kategoriyi çıkarır ve
+harcamayı **onay beklemeden** kaydeder. Ana sayfada "Kaydedildi: Migros ₺450,00 · İş Genç" bildirimi çıkar.
+
+### Neler kaydedilir, neler kaydedilmez?
+
+| SMS | Ne olur |
+|---|---|
+| Kartla harcama / alışveriş | **Kaydedilir.** Taksitliyse taksitlere bölünüp sonraki aylara yazılır ("Teknosa 1/3. Taksit"). |
+| Doğrulama kodu (3D Secure / OTP), reklam, kampanya, kart borcu ödemesi, maaş, gelen para, reddedilen işlem | **Atlanır**, hiçbir yere yazılmaz. |
+| İade, ATM / nakit çekim, EFT / FAST / havale, yalnızca dövizli tutar | **Kaydedilmez**, Ayarlar'da onayına sunulur: "Harcama olarak ekle" veya "Yoksay". |
+
+- **Kart:** SMS'teki son 4 haneden ("1234 ile biten", "**1234") bulunur. İlk kez görülen bir son 4 hane için
+  Kasa banka adından (yoksa son kullandığın karttan) tahmin yapar ve ana sayfada "•••• 1234 ile biten kart İş Genç
+  sayıldı. Doğru mu?" diye sorar. Ayarlar'da değiştirirsen o karttan gelen önceki SMS kayıtları da taşınır.
+- **İş yeri ve kategori:** "MIGROS TICARET A.S." → geçmişte "Migros" yazdıysan **Migros** ve o zamanki kategorisi.
+  Geçmişte yoksa anahtar kelimelerden (Migros → Market, Shell → Ulaşım…), o da yoksa **Diğer**.
+- **Çift kayıt olmaz:** İşlem kimliği SMS metninden türetilir; aynı SMS iki kez gelse ya da iki cihaz aynı anda
+  açık olsa da tek kayıt oluşur.
+- **Tarih:** SMS'teki tarih; SMS'te tarih yoksa telefona geldiği gün.
+
+### Bir kerelik hazırlık (bilgisayardan, yaklaşık 1 dakika)
+
+Kestirme, giriş yapmadan yalnızca senin gelen kutuna **yeni kayıt ekleyebilsin** diye Firestore kuralları
+güncellenmelidir. Bu yapılmadan kestirme "403 PERMISSION_DENIED" alır.
+
+1. <https://console.firebase.google.com/project/kasa-18dce/firestore/rules> adresini aç.
+2. Mevcut kuralların yedeğini al (metni bir yere kopyala).
+3. Depodaki [`firestore.rules`](../firestore.rules) dosyasının tamamını yapıştır → **Yayınla**.
+
+Kural, kestirmeye yalnızca **oluşturma** izni verir (okuma, değiştirme, silme yok) ve kaydın Kasa'da oluşturulan
+gizli anahtarı taşımasını şart koşar.
+
+### Kasa'da açma
+
+**Ayarlar → Otomatik kayıt · banka SMS'i → Otomatik kaydı aç.** Kasa sana özel bir gizli anahtar oluşturur ve
+kestirmeye yapıştıracağın **adresi** ile **gövdeyi** gösterir (Kopyala düğmeleriyle).
+
+### iPhone'da otomasyonu kurma (bir kez, yaklaşık 3 dakika)
+
+1. **Kestirmeler** → alttan **Otomasyon** → **+** (veya **Yeni Otomasyon**) → **Mesaj**.
+2. **Mesaj Şunu İçeriyor**: `TL` yaz. **Hemen Çalıştır**'ı seç, **Çalıştığında Bildir**'i kapat → **İleri** →
+   **Yeni Boş Otomasyon**.
+3. **Metin** eylemi ekle. İçine önce **Geçerli Tarih** değişkenini koy; ona dokun → **Tarih Biçimi: ISO 8601**,
+   **Saati Dahil Et** açık. Sonra **yeni satıra** geç, **Kestirme Girdisi** değişkenini koy; ona dokun → **İçerik**.
+4. **Base64 Kodla** eylemi ekle (girdisi: Metin). **Daha Fazla Göster** → **Satır Sonları: Hiçbiri**.
+5. Bir **Metin** eylemi daha ekle, Kasa'daki **gövdeyi** yapıştır. İçindeki `BASE64` yazısını sil ve yerine
+   **Base64 Kodlanmış Metin** değişkenini koy.
+6. **URL'nin İçeriğini Al** eylemi ekle. URL olarak Kasa'daki **adresi** yapıştır. **Daha Fazla Göster**:
+   - Yöntem: **POST**
+   - Başlıklar: `Content-Type` = `application/json`
+   - İstek Gövdesi: **Dosya** → bir önceki **Metin**
+7. **Bitti**.
+
+İngilizce adlar: *Automation → Message → Message Contains → Run Immediately*, *Text*, *Current Date (ISO 8601)*,
+*Shortcut Input → Content*, *Base64 Encode (Line Breaks: None)*, *Get Contents of URL (POST, Headers, Request Body: File)*.
+
+Neden `TL`? Mesaj otomasyonu tek bir sözcüğe göre tetiklenir ve bankaların gönderen adları kişi olarak
+seçilemez. `TL` içeren her SMS (ör. reklamlar) Kasa'ya gider; Kasa harcama olmayanları okur okumaz siler.
+
+### Deneme
+
+- **Ayarlar → Bir SMS'i dene**: bankandan gelmiş eski bir SMS'i yapıştır; Kasa nasıl okuyacağını gösterir,
+  hiçbir şey kaydetmez. Okunuşu yanlışsa o SMS'in biçimini (kart numarasını silerek) paylaş, ayrıştırıcı güncellensin.
+- Gerçek deneme: bir sonraki kartlı alışverişinden sonra Kasa'yı aç; işlem listede ve ana sayfada bildirim görünür.
+
+### Bilinen sınırlar
+
+- Kayıt, Kasa **açıldığında** yapılır. SMS gelir gelmez buluttaki gelen kutusuna yazılır (kaybolmaz), ama işleme
+  dönüştürmek için Kasa'nın bir cihazda açılması gerekir. Tamamen arka planda çalışması için Firebase'in ücretli
+  (Blaze) planındaki Cloud Functions gerekir.
+- Bankalar SMS biçimini değiştirirse bazı alanlar (özellikle iş yeri adı) eksik okunabilir: iş yeri bulunamazsa
+  işlem "Kart harcaması" adıyla kaydedilir; tutar okunamazsa hiç kaydedilmez.
+- Anahtarı biri ele geçirirse yalnızca gelen kutuna sahte SMS ekleyebilir; verilerini okuyamaz ve silemez.
+  Böyle bir şüphede **Ayarlar → Anahtarı yenile** ve kestirmedeki gövdeyi güncelle.

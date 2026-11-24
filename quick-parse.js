@@ -24,7 +24,7 @@ export const CATEGORY_KEYWORDS={
 };
 
 // Banka eş adları: kart adı bunlardan birini içeriyorsa girişteki diğer eş adlarla da eşleşir.
-const BANK_GROUPS=[
+export const BANK_GROUPS=[
   ['is','isbank','is bankasi','maximum'],
   ['garanti','garanti bbva','bonus'],
   ['yapi kredi','ykb','world'],

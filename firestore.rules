@@ -1,0 +1,28 @@
+rules_version = '2';
+// Kasa — Firestore güvenlik kuralları (canlı proje: kasa-18dce).
+// Firebase Console → Firestore Database → Kurallar (Rules) sekmesine bu dosyanın TAMAMI yapıştırılıp "Yayınla"
+// denir; ya da `firebase deploy --only firestore:rules` ile dağıtılır.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Her kullanıcı yalnızca kendi verisine erişir (kartlar, işlemler, ayarlar, gelen kutusu).
+    match /users/{uid}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Banka SMS'i gelen kutusu: iPhone Kestirmesi giriş yapmadan yazar.
+    // Yalnızca YENİ kayıt oluşturabilir; okuyamaz, değiştiremez, silemez. Kayıt yalnızca iki alan içerebilir
+    // ve kullanıcının Kasa'da oluşturduğu gizli anahtarı (users/{uid}/private/sms.k) taşımalıdır.
+    match /users/{uid}/inbox/{id} {
+      allow create: if request.auth == null
+        && request.resource.data.keys().hasOnly(['k', 'b'])
+        && request.resource.data.k is string
+        && request.resource.data.k.size() >= 24
+        && request.resource.data.b is string
+        && request.resource.data.b.size() > 0
+        && request.resource.data.b.size() <= 4000
+        && exists(/databases/$(database)/documents/users/$(uid)/private/sms)
+        && get(/databases/$(database)/documents/users/$(uid)/private/sms).data.k == request.resource.data.k;
+    }
+  }
+}
