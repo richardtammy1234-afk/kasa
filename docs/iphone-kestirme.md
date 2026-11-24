@@ -124,24 +124,44 @@ gizli anahtarı taşımasını şart koşar.
 **Ayarlar → Otomatik kayıt · banka SMS'i → Otomatik kaydı aç.** Kasa sana özel bir gizli anahtar oluşturur ve
 kestirmeye yapıştıracağın **adresi** ile **gövdeyi** gösterir (Kopyala düğmeleriyle).
 
-### iPhone'da otomasyonu kurma (bir kez, yaklaşık 3 dakika)
+### iPhone'da otomasyonu kurma (bir kez, yaklaşık 5 dakika)
 
-1. **Kestirmeler** → alttan **Otomasyon** → **+** (veya **Yeni Otomasyon**) → **Mesaj**.
-2. **Mesaj Şunu İçeriyor**: `TL` yaz. **Hemen Çalıştır**'ı seç, **Çalıştığında Bildir**'i kapat → **İleri** →
-   **Yeni Boş Otomasyon**.
-3. **Metin** eylemi ekle. İçine önce **Geçerli Tarih** değişkenini koy; ona dokun → **Tarih Biçimi: ISO 8601**,
-   **Saati Dahil Et** açık. Sonra **yeni satıra** geç, **Kestirme Girdisi** değişkenini koy; ona dokun → **İçerik**.
-4. **Base64 Kodla** eylemi ekle (girdisi: Metin). **Daha Fazla Göster** → **Satır Sonları: Hiçbiri**.
-5. Bir **Metin** eylemi daha ekle, Kasa'daki **gövdeyi** yapıştır. İçindeki `BASE64` yazısını sil ve yerine
-   **Base64 Kodlanmış Metin** değişkenini koy.
-6. **URL'nin İçeriğini Al** eylemi ekle. URL olarak Kasa'daki **adresi** yapıştır. **Daha Fazla Göster**:
+Adlar iOS sürümüne göre biraz değişir; iki sürümdeki adlar da aşağıda. Kasa'daki **Ayarlar → Otomatik kayıt →
+iPhone kurulumu** bölümü aynı adımları gösterir.
+
+1. **Kestirmeler** → en alttaki **Otomasyon** sekmesi → **+** (veya **Yeni Otomasyon**) → **Mesaj**.
+   Bir kestirmenin içindeki eylem listesinden "Mesajlar" seçme; o eylem listesidir, tetikleyici değil.
+2. Koşulu **mesaj `TL` içeriyor** yap ve onay sorulmasın:
+   - *Yeni iOS:* "Gönderen eşittir Gönderen" satırındaki mavi sözcüklere dokunarak **Mesaj · içeriyor · `TL`** yap.
+     **Otomasyon** açık, **Çalıştırmadan Önce Onayla** kapalı.
+   - *Eski iOS:* **Mesaj Şunu İçeriyor**: `TL`, **Hemen Çalıştır**, **Çalıştığında Bildir** kapalı → **İleri** →
+     **Yeni Boş Otomasyon**.
+3. **Metin** eylemi ekle. İçine **Şu Anki Tarih** (eski iOS: **Geçerli Tarih**) değişkenini koy; ona dokun →
+   **Tarih Biçimi: ISO 8601** (saatin açık ya da kapalı olması fark etmez). **Yeni satıra** geç, **Mesaj** (eski iOS:
+   **Kestirme Girdisi**) değişkenini koy; ona dokun → **İçerik**.
+4. **Base64 ile Kodla** eylemi ekle (girdisi: Metin, mod: Kodla). **Satır Sonları: Yok** (eski iOS: **Hiçbiri**).
+5. Bir **Metin** eylemi daha ekle, Kasa'daki **gövdeyi** yapıştır. İçindeki `BASE64` sözcüğünü sil (tırnaklar
+   kalsın) ve yerine **Base64 Kodlanmış** değişkenini koy.
+6. Adı yalnızca **URL** olan eylemi ekle (mavi zincir simgesi) ve içine Kasa'daki **adresi** yapıştır.
+   Adresi doğrudan URL İçeriğini Al'a yapıştırmak "Zengin Metin türünden URL türüne dönüştüremedi" hatası verebilir.
+7. **URL İçeriğini Al** (eski iOS: **URL'nin İçeriğini Al**) eylemi ekle. Adres kutusunda mavi **URL** değişkeni
+   olsun. Ayarlar:
    - Yöntem: **POST**
    - Başlıklar: `Content-Type` = `application/json`
-   - İstek Gövdesi: **Dosya** → bir önceki **Metin**
-7. **Bitti**.
+   - İstek Gövdesi: **Dosya**. **Dosya**'ya dokun → **Değişken Seç** → `{"fields"` ile başlayan Metin eylemine
+     dokun. İki eylemin adı da "Metin" olduğu için listeden seçmek yanlışlıkla tarihli olanı bağlayabilir.
+8. **▶** ile bir kez çalıştır. Sonuçta `"name" : "projects/kasa-18dce/…/inbox/…"` görürsen kurulum tamam. Bu deneme
+   boş içerik gönderir; Kasa açıldığında sessizce silinir.
+
+| Denemede görülen hata | Neden |
+|---|---|
+| Zengin Metin türünden URL türüne dönüştüremedi | Adres ayrı **URL** eyleminde değil (6. adım). |
+| `Invalid JSON payload received … 2026-…` | **Dosya** tarihli Metin'e bağlı (7. adım). |
+| `PERMISSION_DENIED` | Gövdedeki anahtar eski ya da Firestore kuralı yayınlanmamış. |
 
 İngilizce adlar: *Automation → Message → Message Contains → Run Immediately*, *Text*, *Current Date (ISO 8601)*,
-*Shortcut Input → Content*, *Base64 Encode (Line Breaks: None)*, *Get Contents of URL (POST, Headers, Request Body: File)*.
+*Shortcut Input → Content*, *Base64 Encode (Line Breaks: None)*, *URL*,
+*Get Contents of URL (POST, Headers, Request Body: File)*.
 
 Neden `TL`? Mesaj otomasyonu tek bir sözcüğe göre tetiklenir ve bankaların gönderen adları kişi olarak
 seçilemez. `TL` içeren her SMS (ör. reklamlar) Kasa'ya gider; Kasa harcama olmayanları okur okumaz siler.

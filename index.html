@@ -1316,16 +1316,20 @@ function renderSmsUI(){
     ${Object.keys(map).length?`<div class="sms-sec"><div class="fsec-l">Kart eşleştirme (son 4 hane)</div>${Object.keys(map).sort().map(l4=>`
       <div class="sms-map"><span class="sms-l4">•••• ${esc(l4)}</span><select aria-label="•••• ${esc(l4)} kartı" onchange="window.smsMapSet('${esc(l4)}',this.value)">${cardOpts(map[l4])}</select>${ok.includes(l4)?'':`<button class="btn btn-p sm" onclick="window.smsMapSet('${esc(l4)}','${esc(map[l4])}')">Doğru</button>`}</div>`).join('')}
       <p class="sms-note">Kartı değiştirirsen o karttan gelen önceki SMS kayıtları da yeni karta taşınır.</p></div>`:''}
-    <details class="sms-setup"${nMonth||rv.length?'':' open'}><summary>iPhone kurulumu (bir kez, yaklaşık 3 dakika)</summary>
+    <details class="sms-setup"${nMonth||rv.length?'':' open'}><summary>iPhone kurulumu (bir kez, yaklaşık 5 dakika)</summary>
       <ol class="sms-steps">
-        <li><b>Kestirmeler</b> → alttan <b>Otomasyon</b> → <b>+</b> (veya <b>Yeni Otomasyon</b>) → <b>Mesaj</b>.</li>
-        <li><b>Mesaj Şunu İçeriyor</b>: <span class="ih">TL</span> yaz. <b>Hemen Çalıştır</b>'ı seç, <b>Çalıştığında Bildir</b>'i kapat → <b>İleri</b> → <b>Yeni Boş Otomasyon</b>.</li>
-        <li><b>Metin</b> eylemi ekle. İçine önce <b>Geçerli Tarih</b> değişkenini koy, ona dokun ve <b>Tarih Biçimi: ISO 8601</b>, <b>Saati Dahil Et</b> açık seç. Sonra <b>yeni satıra</b> geç ve <b>Kestirme Girdisi</b> değişkenini koy, ona dokunup <b>İçerik</b>'i seç.</li>
-        <li><b>Base64 Kodla</b> eylemi ekle (girdi: Metin). <b>Daha Fazla Göster</b> → <b>Satır Sonları: Hiçbiri</b>.</li>
-        <li>Bir <b>Metin</b> eylemi daha ekle ve aşağıdaki <b>gövdeyi</b> yapıştır. İçindeki <span class="ih">BASE64</span> yazısını sil, yerine <b>Base64 Kodlanmış Metin</b> değişkenini koy.</li>
-        <li><b>URL'nin İçeriğini Al</b> eylemi ekle. URL olarak aşağıdaki <b>adresi</b> yapıştır. <b>Daha Fazla Göster</b>: Yöntem <b>POST</b>; Başlıklar'a <span class="ih">Content-Type</span> = <span class="ih">application/json</span>; İstek Gövdesi <b>Dosya</b> → bir önceki <b>Metin</b>.</li>
-        <li><b>Bitti</b>. Bir sonraki banka SMS'inde Kasa'yı açtığında harcama listede olur.</li>
+        <li><b>Kestirmeler</b> → en alttaki <b>Otomasyon</b> sekmesi → <b>+</b> (veya <b>Yeni Otomasyon</b>) → <b>Mesaj</b>. Bir kestirmenin içindeki eylem listesinden "Mesajlar" seçme; o başka bir ekran.</li>
+        <li>Koşulu <b>mesaj içeriyor <span class="ih">TL</span></b> yap ve onay sorulmasın:
+          <br><i>Yeni iOS:</i> "Gönderen eşittir" satırındaki mavi sözcüklere dokunup <b>Mesaj</b> · <b>içeriyor</b> · <span class="ih">TL</span> yap. <b>Otomasyon</b> açık, <b>Çalıştırmadan Önce Onayla</b> kapalı.
+          <br><i>Eski iOS:</i> <b>Mesaj Şunu İçeriyor</b>: <span class="ih">TL</span>, <b>Hemen Çalıştır</b>, <b>Çalıştığında Bildir</b> kapalı → <b>İleri</b> → <b>Yeni Boş Otomasyon</b>.</li>
+        <li><b>Metin</b> eylemi ekle. İçine <b>Şu Anki Tarih</b> (eski iOS'ta <b>Geçerli Tarih</b>) değişkenini koy, ona dokunup <b>Tarih Biçimi: ISO 8601</b> seç (saat açık ya da kapalı fark etmez). <b>Yeni satıra</b> geç, <b>Mesaj</b> (eski iOS'ta <b>Kestirme Girdisi</b>) değişkenini koy, ona dokunup <b>İçerik</b>'i seç.</li>
+        <li><b>Base64 ile Kodla</b> eylemi ekle (girdisi: Metin, mod: Kodla). <b>Satır Sonları</b>: <b>Yok</b> / <b>Hiçbiri</b>.</li>
+        <li>Bir <b>Metin</b> eylemi daha ekle ve aşağıdaki <b>gövdeyi</b> yapıştır. İçindeki <span class="ih">BASE64</span> sözcüğünü sil (tırnaklar kalsın), yerine <b>Base64 Kodlanmış</b> değişkenini koy.</li>
+        <li>Adı yalnızca <b>URL</b> olan eylemi ekle (mavi zincir simgesi) ve içine aşağıdaki <b>adresi</b> yapıştır.</li>
+        <li><b>URL İçeriğini Al</b> eylemi ekle. Adres kutusunda mavi <b>URL</b> değişkeni olsun (sarı Metin değil). Ayarları: Yöntem <b>POST</b>; Başlıklar'a <span class="ih">Content-Type</span> = <span class="ih">application/json</span>; İstek Gövdesi <b>Dosya</b>. <b>Dosya</b>'ya dokun → <b>Değişken Seç</b> → <span class="ih">{"fields"</span> ile başlayan Metin eylemine dokun (tarihli olana değil).</li>
+        <li><b>▶</b> ile bir kez çalıştır. Sonuçta <span class="ih">"name" : "projects/…/inbox/…"</span> görürsen kurulum tamam. Bundan sonra banka SMS'i gelince, Kasa'yı açtığında harcama listede olur.</li>
       </ol>
+      <p class="sms-note"><b>Denemede hata çıkarsa:</b> "Zengin Metin türünden URL türüne dönüştüremedi" → 6. adım (adres ayrı URL eyleminde olmalı). "Invalid JSON … 2026-…" → 7. adımda Dosya yanlış Metin'e bağlı. "PERMISSION_DENIED" → gövdedeki anahtar eski; gövdeyi yeniden kopyala.</p>
       <div class="sms-copy"><div class="fsec-l">Adres</div><span class="ih" id="sms-url">${esc(smsUrl())}</span><button class="btn btn-s sm" onclick="window.smsCopy('sms-url')">Adresi kopyala</button></div>
       <div class="sms-copy"><div class="fsec-l">Gövde</div><span class="ih" id="sms-body">${esc(smsBody())}</span><button class="btn btn-s sm" onclick="window.smsCopy('sms-body')">Gövdeyi kopyala</button></div>
       <p class="sms-note">Bu adres ve gövde senin gizli anahtarını içerir; kimseyle paylaşma. Anahtar yalnızca Kasa'ya yeni SMS eklemeye yarar, verilerini okuyamaz. Paylaştıysan "Anahtarı yenile"ye dokun ve kestirmedeki gövdeyi güncelle.</p>
