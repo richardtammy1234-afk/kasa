@@ -1211,7 +1211,7 @@ window.restoreBackup=async input=>{
 // doğrulama kodu/reklam/borç ödemesi gibi SMS'ler atılır, iade/nakit/transfer gibi belirsizler onaya bırakılır.
 // İşlem kimliği SMS metninden türetilir: aynı SMS iki kez gelse ya da iki cihaz aynı anda işlese de tek kayıt olur.
 const smsRef=()=>doc(userRef('private'),'sms');
-const smsUrl=()=>`https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents/users/${currentUser.uid}/inbox`;
+const smsUrl=()=>`https://firestore.googleapis.com/v1/projects/${app.options?.projectId||firebaseConfig.projectId}/databases/(default)/documents/users/${currentUser.uid}/inbox`;
 const smsBody=()=>`{"fields":{"k":{"stringValue":"${smsCfg?.k||''}"},"b":{"stringValue":"BASE64"}}}`;
 const newSmsKey=()=>{const a=new Uint8Array(24);crypto.getRandomValues(a);return btoa(String.fromCharCode(...a)).replace(/\+/g,'-').replace(/\//g,'_');};
 const docId=d=>d.id??d.data()?.id;
